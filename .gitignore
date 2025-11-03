@@ -1,0 +1,15 @@
+# Logs y temporales
+*.log
+Thumbs.db
+
+# Variables de entorno
+.env
+*.local
+
+# Compilados o artefactos (ajústalo si no aplica)
+dist/
+build/
+coverage/
+
+# Editor
+.vscode/
