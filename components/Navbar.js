@@ -2,6 +2,12 @@ import { mountWeather } from './Weather.js';
 
 export function renderNavbar(currentUser, activeRoute) {
   const isActive = (r) => (activeRoute === r ? 'active' : '');
+  
+  // Si el usuario está logueado y está en la sección de estudiantes, mostrar navbar personalizado
+  if (currentUser && activeRoute === 'estudiantes') {
+    return renderStudentNavbar(currentUser);
+  }
+  
   return `
     <div class="navbar-inner">
       <div class="brand">
@@ -45,10 +51,32 @@ export function renderNavbar(currentUser, activeRoute) {
         </nav>
       </div>
     </div>
-  `;
+   `;
 }
 
-export function mountNavbar(currentUser, navigate, toast) {
+// Función para montar la funcionalidad del navbar de estudiantes
+function mountStudentNavbar(currentUser, navigate, toast) {
+  // Funcionalidad del botón de logout para estudiantes
+  const logoutStudentBtn = document.getElementById('logout-student');
+  if (logoutStudentBtn) {
+    logoutStudentBtn.addEventListener('click', () => {
+      sessionStorage.removeItem('currentUser');
+      toast('Sesión cerrada.');
+      navigate('login');
+    });
+  }
+  
+  // Montar el clima en el widget del navbar de estudiantes
+  mountWeather('weather-student');
+}
+
+export function mountNavbar(currentUser, navigate, toast, activeRoute) {
+  // Si estamos en la sección de estudiantes, montar funcionalidad específica
+  if (currentUser && activeRoute === 'estudiantes') {
+    mountStudentNavbar(currentUser, navigate, toast);
+    return;
+  }
+  
   // Funcionalidad del botón de logout (desktop)
   const logoutBtn = document.getElementById('logout');
   if (logoutBtn) {
@@ -101,4 +129,32 @@ export function mountNavbar(currentUser, navigate, toast) {
   // Montar el clima en ambos contenedores
   mountWeather('weather');
   mountWeather('weather-mobile');
+}
+
+// Función para renderizar el navbar personalizado de estudiantes
+function renderStudentNavbar(currentUser) {
+  return `
+    <div class="student-navbar">
+      <div class="navbar-inner">
+        <div class="brand">
+          <div>Portal Estudiantes</div>
+        </div>
+        
+        <div class="student-info">
+          <div class="user-avatar">
+            ${currentUser.name.charAt(0).toUpperCase()}
+          </div>
+          <div class="user-details">
+            <p class="user-name">${currentUser.name}</p>
+            <p class="user-role">${currentUser.role}</p>
+          </div>
+          <div class="weather-widget" id="weather-student"></div>
+          <button id="logout-student" class="btn-logout">
+            <span class="logout-icon">🚪</span>
+            Salir
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
 }

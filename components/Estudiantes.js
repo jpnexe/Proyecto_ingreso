@@ -6,27 +6,26 @@ export function render({ currentUser }) {
         <div class="grid cols-3">
                 <!-- Profile Card -->
                 <div class="glass card">
-                    <div class="section-title">👤 Perfil del Estudiante</div>
-                    <div style="text-align: center; margin-bottom: 20px;">
-                        <div style="width: 80px; height: 80px; border-radius: 50%; background: var(--orange); margin: 0 auto 15px; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px; font-weight: bold;">
-                            ${(currentUser?.name || 'Usuario').charAt(0).toUpperCase()}
-                        </div>
-                        <h3 style="margin: 0 0 5px 0; color: var(--text);">${currentUser?.name || 'Estudiante'}</h3>
-                        <div class="badge">Ingeniería Informática</div>
-                    </div>
+                    <div class="section-title">👤 Información Académica</div>
                     
                     <div id="student-profile">
                         <div style="margin-bottom: 12px;">
-                            <strong>ID:</strong> ${currentUser?.id || '20231045'}
+                            <strong>ID Estudiantil:</strong> ${currentUser?.id || '20231045'}
                         </div>
                         <div style="margin-bottom: 12px;">
-                            <strong>Semestre:</strong> 4to Semestre
+                            <strong>Semestre Actual:</strong> 4to Semestre
                         </div>
                         <div style="margin-bottom: 12px;">
-                            <strong>Email:</strong> ${currentUser?.email || 'estudiante@universidad.edu'}
+                            <strong>Email Institucional:</strong> ${currentUser?.email || 'estudiante@uniguajira.edu.co'}
+                        </div>
+                        <div style="margin-bottom: 12px;">
+                            <strong>Estado:</strong> 
+                            <span class="badge" style="background: rgba(34, 197, 94, 0.2); color: #15803d;">
+                                ✅ Activo
+                            </span>
                         </div>
                         <button class="btn btn-blue" onclick="editProfile()" style="width: 100%; margin-top: 15px;">
-                            ✏️ Editar Perfil
+                            ✏️ Editar Información
                         </button>
                     </div>
                 </div>
@@ -173,7 +172,7 @@ export function render({ currentUser }) {
   `;
 }
 
-export function mount({ currentUser }) {
+export function mount({ currentUser, navigate, toast }) {
   // Cargar anuncios
   loadAnnouncements();
   

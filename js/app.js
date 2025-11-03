@@ -72,7 +72,7 @@ async function renderRoute() {
   // Navbar visible except on auth pages
   const showNav = !(['login', 'register', 'registro', ''].includes(route));
   navbar.innerHTML = showNav ? renderNavbar(user, route) : '';
-  if (showNav) mountNavbar(user, navigate, showToast);
+  if (showNav) mountNavbar(user, navigate, showToast, route);
 
   if (!canAccess(route, user)) {
     showToast('Acceso restringido. Inicia sesión con el rol adecuado.');
