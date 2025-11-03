@@ -3,9 +3,15 @@ import { mountWeather } from './Weather.js';
 export function renderNavbar(currentUser, activeRoute) {
   const isActive = (r) => (activeRoute === r ? 'active' : '');
   
-  // Si el usuario está logueado y está en la sección de estudiantes, mostrar navbar personalizado
-  if (currentUser && activeRoute === 'estudiantes') {
-    return renderStudentNavbar(currentUser);
+  // Si el usuario está logueado, mostrar navbar personalizado según el rol
+  if (currentUser) {
+    if (activeRoute === 'estudiantes') {
+      return renderStudentNavbar(currentUser);
+    } else if (activeRoute === 'admin') {
+      return renderAdminNavbar(currentUser);
+    } else if (activeRoute === 'visitantes') {
+      return renderVisitorNavbar(currentUser);
+    }
   }
   
   return `
@@ -70,11 +76,51 @@ function mountStudentNavbar(currentUser, navigate, toast) {
   mountWeather('weather-student');
 }
 
+// Función para montar la funcionalidad del navbar de administradores
+function mountAdminNavbar(currentUser, navigate, toast) {
+  // Funcionalidad del botón de logout para administradores
+  const logoutAdminBtn = document.getElementById('logout-admin');
+  if (logoutAdminBtn) {
+    logoutAdminBtn.addEventListener('click', () => {
+      sessionStorage.removeItem('currentUser');
+      toast('Sesión de administrador cerrada.');
+      navigate('login');
+    });
+  }
+  
+  // Montar el clima en el widget del navbar de administradores
+  mountWeather('weather-admin');
+}
+
+// Función para montar la funcionalidad del navbar de visitantes
+function mountVisitorNavbar(currentUser, navigate, toast) {
+  // Funcionalidad del botón de logout para visitantes
+  const logoutVisitorBtn = document.getElementById('logout-visitor');
+  if (logoutVisitorBtn) {
+    logoutVisitorBtn.addEventListener('click', () => {
+      sessionStorage.removeItem('currentUser');
+      toast('Sesión de visitante cerrada.');
+      navigate('login');
+    });
+  }
+  
+  // Montar el clima en el widget del navbar de visitantes
+  mountWeather('weather-visitor');
+}
+
 export function mountNavbar(currentUser, navigate, toast, activeRoute) {
-  // Si estamos en la sección de estudiantes, montar funcionalidad específica
-  if (currentUser && activeRoute === 'estudiantes') {
-    mountStudentNavbar(currentUser, navigate, toast);
-    return;
+  // Si estamos en secciones específicas, montar funcionalidad correspondiente
+  if (currentUser) {
+    if (activeRoute === 'estudiantes') {
+      mountStudentNavbar(currentUser, navigate, toast);
+      return;
+    } else if (activeRoute === 'admin') {
+      mountAdminNavbar(currentUser, navigate, toast);
+      return;
+    } else if (activeRoute === 'visitantes') {
+      mountVisitorNavbar(currentUser, navigate, toast);
+      return;
+    }
   }
   
   // Funcionalidad del botón de logout (desktop)
@@ -153,6 +199,100 @@ function renderStudentNavbar(currentUser) {
             <span class="logout-icon">🚪</span>
             Salir
           </button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// Función para renderizar el navbar personalizado de administradores
+function renderAdminNavbar(currentUser) {
+  return `
+    <div class="admin-navbar">
+      <div class="navbar-inner">
+        <div class="brand">
+          <div>Panel de Administración</div>
+        </div>
+        
+        <div class="admin-controls">
+          <div class="nav-links">
+            <a href="#/admin/usuarios" class="admin-link">
+              <span class="icon">👥</span>
+              Usuarios
+            </a>
+            <a href="#/admin/reportes" class="admin-link">
+              <span class="icon">📊</span>
+              Reportes
+            </a>
+            <a href="#/admin/configuracion" class="admin-link">
+              <span class="icon">⚙️</span>
+              Configuración
+            </a>
+            <a href="#/admin/sistema" class="admin-link">
+              <span class="icon">🔧</span>
+              Sistema
+            </a>
+          </div>
+          
+          <div class="admin-info">
+            <div class="user-avatar admin-avatar">
+              ${currentUser.name.charAt(0).toUpperCase()}
+            </div>
+            <div class="user-details">
+              <p class="user-name">${currentUser.name}</p>
+              <p class="user-role admin-role">Administrador</p>
+            </div>
+            <div class="weather-widget" id="weather-admin"></div>
+            <button id="logout-admin" class="btn-logout admin-logout">
+              <span class="logout-icon">🔐</span>
+              Salir
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// Función para renderizar el navbar personalizado de visitantes
+function renderVisitorNavbar(currentUser) {
+  return `
+    <div class="visitor-navbar">
+      <div class="navbar-inner">
+        <div class="brand">
+          <div>Portal de Visitantes</div>
+        </div>
+        
+        <div class="visitor-controls">
+          <div class="nav-links">
+            <a href="#/visitantes/informacion" class="visitor-link">
+              <span class="icon">ℹ️</span>
+              Información
+            </a>
+            <a href="#/visitantes/eventos" class="visitor-link">
+              <span class="icon">📅</span>
+              Eventos
+            </a>
+            <a href="#/visitantes/contacto" class="visitor-link">
+              <span class="icon">📞</span>
+              Contacto
+            </a>
+          </div>
+          
+          <div class="visitor-info">
+            <div class="user-avatar visitor-avatar">
+              ${currentUser.name.charAt(0).toUpperCase()}
+            </div>
+            <div class="user-details">
+              <p class="user-name">${currentUser.name}</p>
+              <p class="user-role visitor-role">Visitante</p>
+            </div>
+            <div class="weather-widget" id="weather-visitor"></div>
+            <button id="logout-visitor" class="btn-logout visitor-logout">
+              <span class="logout-icon">👋</span>
+              Salir
+            </button>
+          </div>
         </div>
       </div>
     </div>
