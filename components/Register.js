@@ -119,7 +119,7 @@ export function render() {
     `;
 }
 
-export function mount({ navigate, showToast }) {
+export function mount({ navigate, showToast: showModal }) {
     const form = document.getElementById('register-form');
     const adminWrap = document.getElementById('admin-code-wrap');
     const userTypeSelect = document.getElementById('user-type');
@@ -202,55 +202,55 @@ export function mount({ navigate, showToast }) {
         
         // Validaciones básicas
         if (!name) {
-            showToast('Por favor ingresa tu nombre completo', 'error');
+            showModal('Por favor ingresa tu nombre completo', 'error');
             return;
         }
         
         if (!email) {
-            showToast('Por favor ingresa tu correo electrónico', 'error');
+            showModal('Por favor ingresa tu correo electrónico', 'error');
             return;
         }
         
         // Validar formato de email
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(email)) {
-            showToast('Por favor ingresa un correo electrónico válido', 'error');
+            showModal('Por favor ingresa un correo electrónico válido', 'error');
             return;
         }
         
         if (!password) {
-            showToast('Por favor ingresa una contraseña', 'error');
+            showModal('Por favor ingresa una contraseña', 'error');
             return;
         }
         
         if (!confirmPassword) {
-            showToast('Por favor confirma tu contraseña', 'error');
+            showModal('Por favor confirma tu contraseña', 'error');
             return;
         }
         
         if (!userType) {
-            showToast('Por favor selecciona un tipo de usuario', 'error');
+            showModal('Por favor selecciona un tipo de usuario', 'error');
             return;
         }
         
         if (password !== confirmPassword) {
-            showToast('Las contraseñas no coinciden', 'error');
+            showModal('Las contraseñas no coinciden', 'error');
             return;
         }
         
         if (password.length < 6) {
-            showToast('La contraseña debe tener al menos 6 caracteres', 'error');
+            showModal('La contraseña debe tener al menos 6 caracteres', 'error');
             return;
         }
         
         // Validación específica para administradores
         if (userType === 'admin') {
             if (!adminCode) {
-                showToast('El código de administrador es requerido', 'error');
+                showModal('El código de administrador es requerido', 'error');
                 return;
             }
             if (adminCode !== 'ADMIN2025') {
-                showToast('Código de administrador inválido. Usa: ADMIN2025', 'error');
+                showModal('Código de administrador inválido. Usa: ADMIN2025', 'error');
                 return;
             }
         }
@@ -272,20 +272,20 @@ export function mount({ navigate, showToast }) {
                 adminCode 
             });
             
-            showToast('Usuario registrado correctamente', 'success');
-            
-            // Limpiar formulario
-            form.reset();
-            adminWrap.classList.add('hidden');
-            
-            // Redirigir al login después de un breve delay
-            setTimeout(() => {
-                navigate('/login');
-            }, 1500);
-            
-        } catch (err) {
-            console.error('Error al registrar usuario:', err);
-            showToast(err.message || 'Error al registrar usuario', 'error');
+            showModal('Usuario registrado correctamente', 'success');
+             
+             // Limpiar formulario
+             form.reset();
+             adminWrap.classList.add('hidden');
+             
+             // Redirigir al login después de un breve delay
+             setTimeout(() => {
+                 navigate('/login');
+             }, 1500);
+             
+         } catch (err) {
+             console.error('Error al registrar usuario:', err);
+             showModal(err.message || 'Error al registrar usuario', 'error');
         } finally {
             // Rehabilitar el botón
             submitBtn.disabled = false;

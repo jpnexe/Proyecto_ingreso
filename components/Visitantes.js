@@ -92,7 +92,7 @@ export function render({ currentUser }) {
   `;
 }
 
-export function mount({ currentUser, showToast }) {
+export function mount({ currentUser, showModal }) {
   const form = document.getElementById('reserva-form');
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -103,10 +103,10 @@ export function mount({ currentUser, showToast }) {
       if (!currentUser) throw new Error('Debes iniciar sesión.');
       const iso = new Date(`${date}T${time}:00`).toISOString();
       await createReserva({ userId: currentUser.id, dateISO: iso, motivo });
-      showToast('Reserva creada');
+      showModal('Reserva creada', 'success');
       await loadReservas(currentUser.id);
     } catch (err) {
-      showToast(err.message || 'Error al reservar');
+      showModal(err.message || 'Error al reservar', 'error');
     }
   });
 

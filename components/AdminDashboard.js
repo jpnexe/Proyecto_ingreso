@@ -53,7 +53,7 @@ export function render({ currentUser }) {
   `;
 }
 
-export function mount({ showToast }) {
+export function mount({ showModal }) {
   let usersCache = [];
 
   async function refreshKpis() {
@@ -103,10 +103,10 @@ export function mount({ showToast }) {
         const role = document.querySelector(`select[data-id="${id}"][data-field="role"]`).value;
         try {
           await updateUser(id, { name, email, role });
-          showToast('Usuario actualizado');
+          showModal('Usuario actualizado', 'success');
           await refreshKpis();
         } catch (err) {
-          showToast(err.message || 'Error al actualizar');
+          showModal(err.message || 'Error al actualizar', 'error');
         }
       });
     });

@@ -122,7 +122,7 @@ export function render() {
     `;
 }
 
-export function mount({ navigate, showToast }) {
+export function mount({ navigate, showToast: showModal }) {
   const form = document.getElementById('login-form');
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -133,7 +133,7 @@ export function mount({ navigate, showToast }) {
     console.log('Intento de login:', { userType, email, password: '***' });
     
     if (!userType) {
-      showToast('Por favor selecciona un tipo de usuario', 'error');
+      showModal('Por favor selecciona un tipo de usuario', 'error');
       return;
     }
     
@@ -155,12 +155,12 @@ export function mount({ navigate, showToast }) {
       console.log('Mapeo de roles:', { userType, expectedRole: roleMapping[userType], actualRole: user.role });
       
       if (user.role !== roleMapping[userType]) {
-        showToast('El tipo de usuario no coincide con tu cuenta', 'error');
+        showModal('El tipo de usuario no coincide con tu cuenta', 'error');
         return;
       }
       
       localStorage.setItem('currentUser', JSON.stringify(user));
-      showToast('¡Bienvenido!', 'success');
+      showModal('¡Bienvenido!', 'success');
       
       // Redirigir según el tipo de usuario
       switch (userType) {
@@ -176,7 +176,7 @@ export function mount({ navigate, showToast }) {
       }
     } catch (error) {
       console.error('Error en login:', error);
-      showToast(error.message, 'error');
+      showModal(error.message, 'error');
     }
   });
 
@@ -249,11 +249,11 @@ export function mount({ navigate, showToast }) {
         const allUsers = await db.users.toArray();
         console.log('Usuarios en la base de datos:', allUsers);
         
-        showToast(`Base de datos reseteada. ${allUsers.length} usuarios creados`, 'success');
+        showModal(`Base de datos reseteada. ${allUsers.length} usuarios creados`, 'success');
         resetDbBtn.textContent = 'Resetear Base de Datos';
         resetDbBtn.disabled = false;
       } catch (error) {
-        showToast('Error al resetear la base de datos: ' + error.message, 'error');
+        showModal('Error al resetear la base de datos: ' + error.message, 'error');
         resetDbBtn.textContent = 'Resetear Base de Datos';
         resetDbBtn.disabled = false;
       }

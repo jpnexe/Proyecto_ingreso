@@ -22,18 +22,63 @@ function navigate(route) {
   location.hash = route;
 }
 
-function showToast(message, type = 'info') {
-  const toast = document.getElementById('toast');
-  toast.textContent = message;
-  toast.className = 'toast show';
+function showModal(message, type = 'info', title = null) {
+  const overlay = document.getElementById('modal-overlay');
+  const dialog = document.getElementById('modal-dialog');
+  const icon = document.getElementById('modal-icon');
+  const titleElement = document.getElementById('modal-title');
+  const messageElement = document.getElementById('modal-message');
+  const closeBtn = document.getElementById('modal-close');
+  const okBtn = document.getElementById('modal-ok');
+
+  // Set content
+  messageElement.textContent = message;
+  
+  // Set type-specific styles and content
+  dialog.className = 'modal-dialog';
   if (type === 'error') {
-    toast.classList.add('error');
+    dialog.classList.add('error');
+    icon.className = 'fas fa-exclamation-triangle';
+    titleElement.textContent = title || 'Error';
   } else if (type === 'success') {
-    toast.classList.add('success');
+    dialog.classList.add('success');
+    icon.className = 'fas fa-check-circle';
+    titleElement.textContent = title || 'Éxito';
+  } else if (type === 'warning') {
+    dialog.classList.add('warning');
+    icon.className = 'fas fa-exclamation-triangle';
+    titleElement.textContent = title || 'Advertencia';
+  } else {
+    icon.className = 'fas fa-info-circle';
+    titleElement.textContent = title || 'Información';
   }
-  setTimeout(() => {
-    toast.classList.remove('show', 'error', 'success');
-  }, 3000);
+
+  // Show modal
+  overlay.classList.add('show');
+  
+  // Close handlers
+  const closeModal = () => {
+    overlay.classList.remove('show');
+  };
+  
+  closeBtn.onclick = closeModal;
+  okBtn.onclick = closeModal;
+  
+  // Close on overlay click
+  overlay.onclick = (e) => {
+    if (e.target === overlay) {
+      closeModal();
+    }
+  };
+  
+  // Close on Escape key
+  const handleEscape = (e) => {
+    if (e.key === 'Escape') {
+      closeModal();
+      document.removeEventListener('keydown', handleEscape);
+    }
+  };
+  document.addEventListener('keydown', handleEscape);
 }
 
 const routes = {
@@ -72,17 +117,17 @@ async function renderRoute() {
   // Navbar visible except on auth pages
   const showNav = !(['login', 'register', 'registro', ''].includes(route));
   navbar.innerHTML = showNav ? renderNavbar(user, route) : '';
-  if (showNav) mountNavbar(user, navigate, showToast, route);
+  if (showNav) mountNavbar(user, navigate, showModal, route);
 
   if (!canAccess(route, user)) {
-    showToast('Acceso restringido. Inicia sesión con el rol adecuado.');
+    showModal('Acceso restringido. Inicia sesión con el rol adecuado.', 'error');
     navigate('login');
     return;
   }
 
   app.innerHTML = Component.render({ currentUser: user });
   if (typeof Component.mount === 'function') {
-    Component.mount({ currentUser: user, navigate, showToast });
+    Component.mount({ currentUser: user, navigate, showToast: showModal });
   }
 }
 
