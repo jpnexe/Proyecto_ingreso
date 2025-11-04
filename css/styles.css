@@ -11,102 +11,143 @@
   --border: rgba(255, 255, 255, 0.35);
 }
 
+/* Tema claro (por defecto) */
+[data-theme="light"] {
+  --bg-primary: linear-gradient(135deg, #667eea, #764ba2);
+  --bg-container: rgba(255, 255, 255, 0.1);
+  --text-primary: #ffffff;
+  --text-secondary: #e0e0e0;
+  --glass-bg: rgba(255, 255, 255, 0.15);
+  --glass-border: rgba(255, 255, 255, 0.2);
+  --shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+  --bg-header: linear-gradient(135deg, #2c3e50, #34495e);
+  --bg-header-color: #34495e;
+}
+
+/* Tema oscuro */
+[data-theme="dark"] {
+  --bg-primary: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460);
+  --bg-container: rgba(0, 0, 0, 0.3);
+  --text-primary: #ffffff;
+  --text-secondary: #b0b0b0;
+  --glass-bg: rgba(0, 0, 0, 0.25);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  --bg-header: linear-gradient(135deg, #2c3e50, #34495e);
+  --bg-header-color: #34495e;
+}
+
+/* Interruptor de tema */
+.theme-switch {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 1100;
+}
+
+.theme-switch input {
+  display: none;
+}
+
+.theme-switch label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  padding: 10px 15px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(10px);
+  border-radius: 25px;
+  border: 1px solid var(--glass-border);
+  color: var(--text-primary);
+  font-size: 14px;
+  transition: all 0.3s ease;
+}
+
+.theme-switch label:hover {
+  background: var(--glass-bg);
+  transform: translateY(-2px);
+}
+
+.switch {
+  position: relative;
+  width: 50px;
+  height: 25px;
+  background: var(--glass-border);
+  border-radius: 25px;
+  transition: background 0.3s ease;
+}
+
+.switch::before {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 21px;
+  height: 21px;
+  background: var(--text-primary);
+  border-radius: 50%;
+  transition: transform 0.3s ease;
+}
+
+.theme-switch input:checked + label .switch {
+  background: var(--blue);
+}
+
+.theme-switch input:checked + label .switch::before {
+  transform: translateX(25px);
+}
+
+/* Ubicación del switch dentro del header/nav */
+.uniguajira-header .theme-switch {
+  position: static;
+  top: auto;
+  right: auto;
+  z-index: auto;
+  margin-left: 1rem;
+}
+
+.desktop-nav .theme-switch {
+  margin-left: 1rem;
+}
+
+.mobile-nav-menu .theme-switch {
+  display: flex;
+  justify-content: center;
+  padding: 8px 16px;
+}
+
+.mobile-nav-menu .theme-switch label {
+  width: 100%;
+  justify-content: center;
+}
+
 * { box-sizing: border-box; }
-html, body { height: 100%; }
+html, body { height: 100%; overflow-x: hidden; }
 body {
   margin: 0;
   font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-  color: var(--text);
-  background: linear-gradient(135deg, var(--bg1), var(--bg2) 50%, var(--bg3));
+  color: var(--text-primary, #ffffff);
+  background: var(--bg-primary, linear-gradient(135deg, #667eea, #764ba2));
   min-height: 100vh;
+  display: block;
+  transition: background 0.3s ease, color 0.3s ease;
 }
 
-body {
-  background: #475569;
-}
-
-.container { width: min(1100px, 92%); margin: 24px auto 48px; }
-
-#navbar {
-  position: sticky; top: 0; z-index: 50;
-  backdrop-filter: blur(12px);
-}
-.navbar-inner { display: flex; align-items: center; justify-content: space-between; padding: 14px 24px; }
-.brand { display: flex; align-items: center; gap: 12px; font-weight: 700; letter-spacing: .2px; }
-.brand .logo { width: 36px; height: 36px; border-radius: 10px; background: var(--glass); border: 1px solid var(--border); box-shadow: 0 6px 20px rgba(0,0,0,.08); }
-.nav { display: flex; gap: 12px; flex-wrap: wrap; }
-.nav a { text-decoration: none; color: #0f172a; padding: 8px 12px; border-radius: 10px; background: var(--glass); border: 1px solid var(--border); transition: transform .08s ease, background .15s ease; }
-.nav a:hover { transform: translateY(-1px); background: rgba(255,255,255,0.28); }
-.nav a.active { outline: 2px solid rgba(52, 152, 219, .45); }
-
-.btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: 10px; border: 1px solid var(--border); background: var(--glass); color: #0f172a; cursor: pointer; transition: transform .08s ease, box-shadow .15s ease, background .15s ease; }
-.btn:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(0,0,0,.08); background: rgba(255,255,255,0.28); }
-.btn-orange { outline: 2px solid rgba(255,127,80,.5); }
-.btn-green { outline: 2px solid rgba(46,204,113,.5); }
-.btn-blue { outline: 2px solid rgba(52,152,219,.5); }
-
-.glass { background: var(--glass); backdrop-filter: blur(12px); border: 1px solid var(--border); border-radius: 14px; box-shadow: 0 12px 32px rgba(0,0,0,.08); }
-.card { padding: 18px; }
-
-.grid { display: grid; gap: 16px; }
-.grid.cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.grid.cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-@media (max-width: 900px) {
-  .grid.cols-3 { grid-template-columns: 1fr 1fr; }
-}
-@media (max-width: 700px) {
-  .grid.cols-2, .grid.cols-3 { grid-template-columns: 1fr; }
-}
-
-fieldset { border: none; padding: 0; margin: 0; }
-.label { font-size: .92rem; color: var(--muted); margin-bottom: 6px; }
-.input, select, textarea { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border); background: rgba(255,255,255,0.6); color: #0f172a; outline: none; }
-.input:focus, select:focus, textarea:focus { outline: 2px solid rgba(52,152,219,.45); }
-.form { display: grid; gap: 14px; }
-.form-actions { display: flex; gap: 10px; flex-wrap: wrap; }
-
-.section-title { font-weight: 700; font-size: 1.2rem; margin: 6px 0 10px; }
-
-.table { width: 100%; border-collapse: collapse; overflow: hidden; border-radius: 12px; }
-.table th, .table td { text-align: left; padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.35); }
-.table th { background: rgba(52,152,219,0.22); }
-.table tr:hover { background: rgba(255,255,255,0.35); }
-
-.kpi { display: flex; align-items: center; gap: 12px; padding: 12px; }
-.kpi .num { font-size: 1.6rem; font-weight: 700; }
-
-.toast { position: fixed; bottom: 20px; right: 20px; padding: 12px 16px; border-radius: 12px; background: rgba(0,0,0,.75); color: white; opacity: 0; pointer-events: none; transform: translateY(6px); transition: all .2s ease; max-width: 320px; }
-.toast.show { opacity: 1; transform: translateY(0); pointer-events: auto; }
-.toast.success { background: rgba(34, 197, 94, 0.9); }
-.toast.error { background: rgba(239, 68, 68, 0.9); }
-
-#weather { display: flex; align-items: center; gap: 12px; }
-.weather-card { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border); background: rgba(255,255,255,.28); }
-
-.badge { display: inline-flex; align-items: center; padding: 4px 8px; border-radius: 999px; border: 1px solid var(--border); background: rgba(255,255,255,.4); font-size: .9rem; }
-.role-admin { color: #a8431d; }
-.role-estudiante { color: #157347; }
-.role-visitante { color: #1f6feb; }
-
-.small { font-size: .9rem; color: var(--muted); }
-.help { font-size: .85rem; color: var(--muted); }
-.hidden { display: none !important; }
-
-/* Universidad de La Guajira Login Styles */
 .uniguajira-login-container {
-  min-height: 100vh;
-  background: linear-gradient(135deg, 
-    #4CAF50 0%, 
-    #2196F3 25%, 
-    #FF9800 50%, 
-    #4CAF50 75%, 
-    #2196F3 100%);
-  position: relative;
-  overflow: hidden;
-}
-.uniguajira-login-container {
-  background: #7d93b1a6;
-  border-radius: 20px;
+    background: var(--bg-container, rgba(255, 255, 255, 0.1));
+    backdrop-filter: blur(10px);
+    border-radius: 20px;
+    box-shadow: var(--shadow, 0 8px 32px 0 rgba(31, 38, 135, 0.37));
+    border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.18));
+    width: 90%;
+    max-width: 1200px;
+    margin: 0 auto;
+    position: relative;
+    z-index: 1;
+    overflow: visible;
+    padding: 1rem;
+    transition: background 0.3s ease, box-shadow 0.3s ease, border 0.3s ease;
 }
 
 .uniguajira-login-container::before {
@@ -116,6 +157,8 @@ fieldset { border: none; padding: 0; margin: 0; }
   left: 0;
   right: 0;
   bottom: 0;
+  pointer-events: none;
+  z-index: 0;
   background: 
     radial-gradient(circle at 20% 30%, rgba(76, 175, 80, 0.3) 0%, transparent 50%),
     radial-gradient(circle at 80% 70%, rgba(33, 150, 243, 0.3) 0%, transparent 50%),
@@ -129,14 +172,15 @@ fieldset { border: none; padding: 0; margin: 0; }
   align-items: center;
   margin: 10px;
   padding: 1rem 2rem;
-  background: 
-  radial-gradient(circle at 20% 30%, rgba(76, 175, 79, 0.499) 0%, transparent 50%),
+  background: var(--bg-header, radial-gradient(circle at 20% 30%, rgba(76, 175, 79, 0.499) 0%, transparent 50%),
   radial-gradient(circle at 80% 70%, rgba(33, 149, 243, 0.633) 0%, transparent 50%),
-  radial-gradient(circle at 60% 20%, rgba(255, 153, 0, 0.762) 0%, transparent 50%);
-  background-color: rgba(219, 219, 219, 0.89);
+  radial-gradient(circle at 60% 20%, rgba(255, 153, 0, 0.762) 0%, transparent 50%));
+  background-color: var(--bg-header-color, rgba(219, 219, 219, 0.89));
   backdrop-filter: blur(20px);
-  position: relative;
-  z-index: 10;
+  position: sticky;
+  top: 0;
+  z-index: 1200;
+  transition: background 0.3s ease, background-color 0.3s ease;
 }
 
 .uniguajira-logo {
@@ -144,8 +188,9 @@ fieldset { border: none; padding: 0; margin: 0; }
   align-items: center;
   gap: 0.5rem;
   font-weight: bold;
-  color: #2c3e50;
+  color: var(--text-primary, #ffffff);
   font-size: 0.9rem;
+  transition: color 0.3s ease;
 }
 
 .uniguajira-nav {
@@ -155,7 +200,7 @@ fieldset { border: none; padding: 0; margin: 0; }
 }
 
 .nav-item {
-  color: #10171d;
+  color: var(--text-primary, #ffffff);
   text-decoration: none;
   font-weight: 500;
   font-size: 0.9rem;
@@ -181,9 +226,6 @@ fieldset { border: none; padding: 0; margin: 0; }
   position: relative;
   z-index: 5;
   padding: 2rem;
-  min-height: 100vh;
-  height: auto; /* Cambiado de 100vh a auto para adaptarse al contenido */
-  overflow: visible; /* Cambiado de hidden a visible para permitir expansión */
   box-sizing: border-box;
 }
 
@@ -203,17 +245,18 @@ fieldset { border: none; padding: 0; margin: 0; }
   flex-direction: column;
   align-items: center;
   gap: 1.5rem;
-  height: auto; /* Cambiado de 100% a auto para adaptarse al contenido */
-  min-height: fit-content; /* Agregado para asegurar que se ajuste al contenido */
-  background: rgba(255, 255, 255, 0.1);
+  height: auto;
+  min-height: fit-content;
+  background: var(--glass-bg, rgba(255, 255, 255, 0.1));
   backdrop-filter: blur(15px);
   border-radius: 20px;
   padding: 1.5rem;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+  border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.2));
+  box-shadow: var(--shadow, 0 20px 40px rgba(0, 0, 0, 0.15));
   overflow-y: auto;
   overflow-x: hidden;
   box-sizing: border-box;
+  transition: background 0.3s ease, border 0.3s ease, box-shadow 0.3s ease;
 }
 
 /* Personalizar la barra de desplazamiento */
@@ -237,18 +280,15 @@ fieldset { border: none; padding: 0; margin: 0; }
 }
 
 .uniguajira-login-form {
-  background:
-  radial-gradient(circle at 20% 30%, rgba(76, 175, 80, 0.3) 0%, transparent 50%),
-  radial-gradient(circle at 80% 70%, rgba(33, 150, 243, 0.3) 0%, transparent 50%),
-  radial-gradient(circle at 60% 20%, rgba(255, 152, 0, 0.3) 0%, transparent 50%);
-  background-color: rgba(113, 113, 113, 0.381);
+  background: var(--glass-bg, rgba(255, 255, 255, 0.15));
   backdrop-filter: blur(15px);
   border-radius: 15px;
-  border: 1px solid rgba(167, 167, 167, 0.501);
+  border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.2));
   padding: 2rem;
-  color: white;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  color: var(--text-primary, #ffffff);
+  box-shadow: var(--shadow, 0 20px 40px rgba(0, 0, 0, 0.3));
   text-align: center;
+  transition: background 0.3s ease, color 0.3s ease, border 0.3s ease;
 }
 
 .login-logo {
@@ -714,7 +754,7 @@ fieldset { border: none; padding: 0; margin: 0; }
 .hamburger-line {
   width: 25px;
   height: 3px;
-  background: #2c3e50;
+  background: var(--text-primary, #2c3e50);
   margin: 3px 0;
   transition: 0.3s;
   border-radius: 2px;
@@ -739,15 +779,22 @@ fieldset { border: none; padding: 0; margin: 0; }
   top: 100%;
   left: 0;
   right: 0;
-  background: rgba(172, 159, 159, 0.95);
+  background: var(--bg-header, rgba(172, 159, 159, 0.95));
   backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.3));
   border-top: none;
   border-radius: 0 0 20px 20px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
-  z-index: 1000;
+  box-shadow: var(--shadow, 0 10px 25px rgba(0, 0, 0, 0.2));
+  z-index: 1190;
   flex-direction: column;
   padding: 1rem 0;
+  transition: background 0.3s ease, border 0.3s ease, box-shadow 0.3s ease;
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
+}
+
+.mobile-nav-menu.active {
+  display: flex;
 }
 
 .mobile-nav-menu.active {
@@ -767,15 +814,15 @@ fieldset { border: none; padding: 0; margin: 0; }
 }
 
 .mobile-nav-item {
-  color: #2c3e50;
+  color: var(--text-primary, #2c3e50);
   text-decoration: none;
   font-weight: 500;
   font-size: 1rem;
   padding: 12px 20px;
   margin: 4px 16px;
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: var(--glass-bg, rgba(255, 255, 255, 0.2));
+  border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.3));
   transition: all 0.3s ease;
   text-align: center;
 }
@@ -787,21 +834,25 @@ fieldset { border: none; padding: 0; margin: 0; }
 }
 
 .mobile-nav-user {
-  color: #2c3e50;
+  color: var(--text-primary, #2c3e50);
   font-weight: 600;
   font-size: 1rem;
   padding: 12px 20px;
   margin: 8px 16px 4px;
   border-radius: 10px;
-  background: rgba(76, 175, 80, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.4);
+  background: var(--glass-bg, rgba(76, 175, 80, 0.3));
+  border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.4));
   text-align: center;
+  transition: background 0.3s ease, border 0.3s ease, color 0.3s ease;
 }
 
 /* Media queries para el header del login */
 @media (max-width: 768px) {
   .uniguajira-header {
-    position: relative;
+    position: sticky;
+    top: 0;
+    margin: 5px;
+    padding: 0.9rem 1.5rem;
   }
   
   .desktop-nav {
@@ -814,6 +865,21 @@ fieldset { border: none; padding: 0; margin: 0; }
   
   .uniguajira-logo .logo-text {
     font-size: 0.85rem;
+  }
+}
+
+@media (max-width: 700px) {
+  .uniguajira-header {
+    padding: 0.8rem 1.3rem;
+    margin: 3px;
+  }
+  
+  .uniguajira-logo .logo-text {
+    font-size: 0.8rem;
+  }
+  
+  .mobile-nav-menu {
+    max-height: calc(100vh - 110px);
   }
 }
 

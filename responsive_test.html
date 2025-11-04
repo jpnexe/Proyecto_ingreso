@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Responsive Test</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f0f0f0;
+        }
+        
+        .test-container {
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .test-info {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .responsive-demo {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .demo-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .demo-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            min-height: 100px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        
+        .size-indicator {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: #333;
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            z-index: 1000;
+        }
+        
+        @media (max-width: 768px) {
+            .test-container {
+                padding: 10px;
+            }
+            
+            .demo-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        @media (min-width: 1200px) {
+            .demo-grid {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
+        
+        @media (min-width: 1600px) {
+            .demo-grid {
+                grid-template-columns: repeat(6, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="size-indicator" id="sizeIndicator"></div>
+    
+    <div class="test-container">
+        <div class="test-info">
+            <h1>🎯 Dashboard Responsive Test</h1>
+            <p>Este demo muestra cómo el dashboard se adapta a diferentes tamaños de pantalla:</p>
+            <ul>
+                <li><strong>Móviles (&lt; 768px):</strong> 1 columna, contenido apilado verticalmente</li>
+                <li><strong>Tablets (768px - 1199px):</strong> 2 columnas, layout adaptable</li>
+                <li><strong>Desktops (1200px - 1599px):</strong> 4 columnas, espacio optimizado</li>
+                <li><strong>Grandes pantallas (≥ 1600px):</strong> 6+ columnas, máximo aprovechamiento</li>
+            </ul>
+            <p><strong>✅ El dashboard ya no se centra automáticamente, sino que usa todo el ancho disponible.</strong></p>
+        </div>
+        
+        <div class="responsive-demo">
+            <h2>📊 Demo de Grid Responsive</h2>
+            <p>Redimensiona la ventana para ver cómo se adaptan las tarjetas:</p>
+            
+            <div class="demo-grid">
+                <div class="demo-card">
+                    <h3>Card 1</h3>
+                    <p>Se adapta al tamaño</p>
+                </div>
+                <div class="demo-card">
+                    <h3>Card 2</h3>
+                    <p>Se adapta al tamaño</p>
+                </div>
+                <div class="demo-card">
+                    <h3>Card 3</h3>
+                    <p>Se adapta al tamaño</p>
+                </div>
+                <div class="demo-card">
+                    <h3>Card 4</h3>
+                    <p>Se adapta al tamaño</p>
+                </div>
+                <div class="demo-card">
+                    <h3>Card 5</h3>
+                    <p>Se adapta al tamaño</p>
+                </div>
+                <div class="demo-card">
+                    <h3>Card 6</h3>
+                    <p>Se adapta al tamaño</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="test-info" style="margin-top: 20px;">
+            <h3>🔧 Cambios Realizados:</h3>
+            <ul>
+                <li>✅ Eliminado el centrado automático (margin: 0 auto)</li>
+                <li>✅ Agregado width: 100% y box-sizing: border-box</li>
+                <li>✅ Implementado sistema de breakpoints responsivos</li>
+                <li>✅ Grid layouts que se adaptan al ancho disponible</li>
+                <li>✅ Tarjetas que expanden según el espacio disponible</li>
+            </ul>
+        </div>
+    </div>
+    
+    <script>
+        function updateSizeIndicator() {
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+            const indicator = document.getElementById('sizeIndicator');
+            
+            let device = 'Desktop';
+            if (width < 480) device = 'Móvil';
+            else if (width < 768) device = 'Tablet Pequeña';
+            else if (width < 1200) device = 'Tablet/Desktop';
+            
+            indicator.innerHTML = `
+                ${width} x ${height}px<br>
+                <small>${device}</small>
+            `;
+        }
+        
+        window.addEventListener('resize', updateSizeIndicator);
+        window.addEventListener('load', updateSizeIndicator);
+        updateSizeIndicator();
+    </script>
+</body>
+</html>

@@ -1,8 +1,9 @@
 import { initDB } from './db.js';
 import * as Login from '../components/Login.js';
 import * as Register from '../components/Register.js';
-import * as AdminDashboard from '../components/AdminDashboard.js';
+
 import * as Estudiantes from '../components/Estudiantes.js';
+import * as AdminDashboard from '../components/AdminDashboard.js';
 import * as Visitantes from '../components/Visitantes.js';
 import { renderNavbar, mountNavbar } from '../components/Navbar.js';
 
@@ -86,9 +87,10 @@ const routes = {
   'login': Login,
   'registro': Register,
   'register': Register,
-  'admin': AdminDashboard,
+
   'estudiantes': Estudiantes,
   'visitantes': Visitantes,
+  'admin': AdminDashboard,
 };
 
 function requiresAuth(route) {

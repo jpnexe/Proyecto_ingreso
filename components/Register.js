@@ -16,6 +16,13 @@ export function render() {
                 <a href="#" class="nav-item">Nosotros</a>
                 <a href="#" class="nav-item">Interes</a>
                 <a href="#" class="nav-item">Universidad</a>
+                <div class="theme-switch">
+                    <input type="checkbox" id="theme-toggle">
+                    <label for="theme-toggle">
+                        <span class="switch"></span>
+                        <span class="theme-text">🌙</span>
+                    </label>
+                </div>
                 <div class="nav-user">👤</div>
             </div>
             <div class="mobile-hamburger" id="mobile-hamburger">
@@ -28,6 +35,13 @@ export function render() {
                 <a href="#" class="mobile-nav-item">Nosotros</a>
                 <a href="#" class="mobile-nav-item">Interes</a>
                 <a href="#" class="mobile-nav-item">Universidad</a>
+                <div class="theme-switch">
+                    <input type="checkbox" id="theme-toggle-mobile">
+                    <label for="theme-toggle-mobile">
+                        <span class="switch"></span>
+                        <span class="theme-text">🌙</span>
+                    </label>
+                </div>
                 <div class="mobile-nav-user">👤 Usuario</div>
             </div>
         </div>
@@ -291,5 +305,28 @@ export function mount({ navigate, showToast: showModal }) {
             submitBtn.disabled = false;
             submitBtn.textContent = originalText;
         }
+    });
+    
+    // Funcionalidad del interruptor de tema
+    const themeToggles = Array.from(document.querySelectorAll('#theme-toggle, #theme-toggle-mobile'));
+    const themeTexts = Array.from(document.querySelectorAll('.theme-text'));
+
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    themeToggles.forEach(t => t && (t.checked = savedTheme === 'dark'));
+    themeTexts.forEach(el => el && (el.textContent = savedTheme === 'dark' ? '☀️' : '🌙'));
+
+    themeToggles.forEach(toggle => {
+        if (!toggle) return;
+        toggle.addEventListener('change', function() {
+            const isDark = this.checked;
+            const newTheme = isDark ? 'dark' : 'light';
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            themeTexts.forEach(el => el && (el.textContent = isDark ? '☀️' : '🌙'));
+            themeToggles.forEach(other => {
+                if (other && other !== this) other.checked = isDark;
+            });
+        });
     });
 }
