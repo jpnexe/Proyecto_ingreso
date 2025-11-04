@@ -2301,3 +2301,179 @@ fieldset { border: none; padding: 0; margin: 0; }
     width: 100%;
   }
 }
+
+/* Estilos específicos para modal de administración */
+#admin-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: none;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+}
+
+#admin-modal .modal-content {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  max-width: 500px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+#admin-modal .modal-close {
+  position: absolute;
+  top: 15px;
+  right: 20px;
+  font-size: 24px;
+  cursor: pointer;
+  color: #666;
+  z-index: 1001;
+}
+
+#admin-modal .modal-close:hover {
+  color: #333;
+}
+
+#admin-modal .modal-body {
+  padding: 40px 30px 20px;
+  text-align: center;
+}
+
+#admin-modal .modal-icon {
+  font-size: 48px;
+  margin-bottom: 15px;
+  display: block;
+}
+
+#admin-modal .modal-message {
+  font-size: 16px;
+  line-height: 1.5;
+  color: #333;
+  white-space: pre-line;
+}
+
+#admin-modal .modal-actions {
+  padding: 0 30px 30px;
+  text-align: center;
+}
+
+#admin-modal .modal-ok {
+  background: var(--blue);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 16px;
+  min-width: 100px;
+}
+
+#admin-modal .modal-ok:hover {
+  background: #2980b9;
+}
+
+/* Estilos para diferentes tipos de modal */
+#admin-modal .modal-success .modal-icon {
+  color: var(--green);
+}
+
+#admin-modal .modal-error .modal-icon {
+  color: #e74c3c;
+}
+
+#admin-modal .modal-warning .modal-icon {
+  color: #f39c12;
+}
+
+#admin-modal .modal-info .modal-icon {
+  color: var(--blue);
+}
+
+/* Estilos para botones de acción en tablas */
+.action-buttons {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+.btn-icon {
+  background: none;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 6px;
+  transition: background-color 0.2s;
+}
+
+.btn-icon:hover {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.btn-edit:hover {
+  background: rgba(52, 152, 219, 0.1);
+}
+
+.btn-delete:hover {
+  background: rgba(231, 76, 60, 0.1);
+}
+
+.btn-view:hover {
+  background: rgba(46, 204, 113, 0.1);
+}
+
+.btn-history:hover {
+  background: rgba(155, 89, 182, 0.1);
+}
+
+.btn-audit:hover {
+  background: rgba(243, 156, 18, 0.1);
+}
+
+.btn-permissions:hover {
+  background: rgba(52, 73, 94, 0.1);
+}
+
+/* Estilos para edición inline */
+.inline-edit {
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 14px;
+  background: white;
+  cursor: pointer;
+}
+
+.inline-edit:focus {
+  outline: 2px solid var(--blue);
+  border-color: var(--blue);
+}
+
+/* Estilos para avatares de usuario */
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.user-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--blue);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 14px;
+}

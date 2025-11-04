@@ -114,8 +114,8 @@ async function renderRoute() {
   const user = getCurrentUser();
   const Component = routes[route] || Login;
 
-  // Navbar visible except on auth pages
-  const showNav = !(['login', 'register', 'registro', ''].includes(route));
+  // Navbar visible excepto en páginas de autenticación y panel admin (usa barra lateral propia)
+  const showNav = !(['login', 'register', 'registro', '', 'admin'].includes(route));
   navbar.innerHTML = showNav ? renderNavbar(user, route) : '';
   if (showNav) mountNavbar(user, navigate, showModal, route);
 
