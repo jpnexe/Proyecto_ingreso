@@ -12,10 +12,10 @@ export function render() {
                 <span class="logo-text">Registro</span>
             </div>
             <div class="uniguajira-nav desktop-nav">
-                <a href="#" class="nav-item">Inicio</a>
-                <a href="#" class="nav-item">Nosotros</a>
-                <a href="#" class="nav-item">Interes</a>
-                <a href="#" class="nav-item">Universidad</a>
+                <a href="#" class="login-nav-item">Inicio</a>
+                <a href="#" class="login-nav-item">Nosotros</a>
+                <a href="#" class="login-nav-item">Interes</a>
+                <a href="#" class="login-nav-item">Universidad</a>
                 <div class="theme-switch">
                     <input type="checkbox" id="theme-toggle">
                     <label for="theme-toggle">

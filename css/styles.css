@@ -13,28 +13,40 @@
 
 /* Tema claro (por defecto) */
 [data-theme="light"] {
-  --bg-primary: linear-gradient(135deg, #667eea, #764ba2);
-  --bg-container: rgba(255, 255, 255, 0.1);
+  /* Fondo con degradado suave entre azul, naranja y verde + capas radiales suaves para efecto cristal */
+  --bg-primary:
+    radial-gradient(circle at 12% 18%, rgba(52, 152, 219, 0.18) 0%, transparent 45%),
+    radial-gradient(circle at 85% 22%, rgba(255, 127, 80, 0.18) 0%, transparent 48%),
+    radial-gradient(circle at 30% 80%, rgba(46, 204, 113, 0.18) 0%, transparent 42%),
+    linear-gradient(135deg, #194969a3 0%, #4e2516aa 48%, #144d2c 100%);
+  /* Ajustes de cristal más notables en modo claro */
+  --bg-container: rgba(255, 255, 255, 0.12);
   --text-primary: #ffffff;
   --text-secondary: #e0e0e0;
-  --glass-bg: rgba(255, 255, 255, 0.15);
-  --glass-border: rgba(255, 255, 255, 0.2);
-  --shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
-  --bg-header: linear-gradient(135deg, #2c3e50, #34495e);
-  --bg-header-color: #34495e;
+  --glass-bg: rgba(255, 255, 255, 0.22);
+  --glass-border: rgba(255, 255, 255, 0.28);
+  --shadow: 0 8px 32px rgba(31, 38, 135, 0.25);
+  --bg-header: linear-gradient(135deg, rgba(52, 152, 219, 0.6), rgba(255, 127, 80, 0.6), rgba(46, 204, 113, 0.6));
+  --bg-header-color: rgba(255, 255, 255, 0.65);
 }
 
 /* Tema oscuro */
 [data-theme="dark"] {
-  --bg-primary: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460);
-  --bg-container: rgba(0, 0, 0, 0.3);
+  /* Fondo con degradado suave y acentuación oscura */
+  --bg-primary:
+    radial-gradient(circle at 15% 25%, rgba(52, 152, 219, 0.10) 0%, transparent 45%),
+    radial-gradient(circle at 85% 75%, rgba(255, 127, 80, 0.08) 0%, transparent 50%),
+    radial-gradient(circle at 60% 20%, rgba(46, 204, 113, 0.10) 0%, transparent 48%),
+    linear-gradient(135deg, #0b1220 0%, #1b1f34 50%, #0a2a2f 100%);
+  --bg-container: rgba(20, 24, 34, 0.35);
   --text-primary: #ffffff;
   --text-secondary: #b0b0b0;
-  --glass-bg: rgba(0, 0, 0, 0.25);
-  --glass-border: rgba(255, 255, 255, 0.1);
-  --shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
-  --bg-header: linear-gradient(135deg, #2c3e50, #34495e);
-  --bg-header-color: #34495e;
+  --glass-bg: rgba(8, 10, 16, 0.28);
+  --glass-border: rgba(255, 255, 255, 0.12);
+  --shadow: 0 8px 32px rgba(0, 0, 0, 0.55);
+  --bg-header:
+    linear-gradient(135deg, rgba(52, 152, 219, 0.25), rgba(255, 127, 80, 0.22), rgba(46, 204, 113, 0.25));
+  --bg-header-color: rgba(28, 32, 44, 0.7);
 }
 
 /* Interruptor de tema */
@@ -128,7 +140,7 @@ body {
   margin: 0;
   font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
   color: var(--text-primary, #ffffff);
-  background: var(--bg-primary, linear-gradient(135deg, #667eea, #764ba2));
+  background: var(--bg-primary, linear-gradient(135deg, #479d8eda, #583e16cc));
   min-height: 100vh;
   display: block;
   transition: background 0.3s ease, color 0.3s ease;
@@ -145,7 +157,9 @@ body {
     margin: 0 auto;
     position: relative;
     z-index: 1;
-    overflow: visible;
+    overflow: hidden; /* Evita que el pseudo-elemento sobresalga y genere halos en las esquinas */
+    -webkit-background-clip: padding-box;
+    background-clip: padding-box;
     padding: 1rem;
     transition: background 0.3s ease, box-shadow 0.3s ease, border 0.3s ease;
 }
@@ -159,10 +173,25 @@ body {
   bottom: 0;
   pointer-events: none;
   z-index: 0;
+  border-radius: inherit; /* Asegura que el fondo decorativo respete las esquinas redondeadas */
+  -webkit-background-clip: padding-box;
+  background-clip: padding-box;
   background: 
     radial-gradient(circle at 20% 30%, rgba(76, 175, 80, 0.3) 0%, transparent 50%),
     radial-gradient(circle at 80% 70%, rgba(33, 150, 243, 0.3) 0%, transparent 50%),
     radial-gradient(circle at 60% 20%, rgba(255, 152, 0, 0.3) 0%, transparent 50%);
+}
+
+/* Afinar bordes en modo oscuro para evitar halo visible */
+[data-theme="dark"] .uniguajira-login-container {
+  border-color: rgba(255, 255, 255, 0.06);
+}
+
+[data-theme="dark"] .uniguajira-login-container::before {
+  background: 
+    radial-gradient(circle at 20% 30%, rgba(76, 175, 80, 0.18) 0%, transparent 50%),
+    radial-gradient(circle at 80% 70%, rgba(33, 150, 243, 0.18) 0%, transparent 50%),
+    radial-gradient(circle at 60% 20%, rgba(255, 152, 0, 0.18) 0%, transparent 50%);
 }
 
 .uniguajira-header {
@@ -172,12 +201,9 @@ body {
   align-items: center;
   margin: 10px;
   padding: 1rem 2rem;
-  background: var(--bg-header, radial-gradient(circle at 20% 30%, rgba(76, 175, 79, 0.499) 0%, transparent 50%),
-  radial-gradient(circle at 80% 70%, rgba(33, 149, 243, 0.633) 0%, transparent 50%),
-  radial-gradient(circle at 60% 20%, rgba(255, 153, 0, 0.762) 0%, transparent 50%));
-  background-color: var(--bg-header-color, rgba(219, 219, 219, 0.89));
   backdrop-filter: blur(20px);
   position: sticky;
+  border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.2));
   top: 0;
   z-index: 1200;
   transition: background 0.3s ease, background-color 0.3s ease;
@@ -209,6 +235,25 @@ body {
 
 .nav-item:hover {
   color: var(--orange);
+}
+
+/* Links del header en Login/Registro: clase aislada para no afectar dashboard */
+.uniguajira-header .desktop-nav .login-nav-item {
+  color: #ffffff;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.95rem;
+  transition: color 0.2s ease, opacity 0.2s ease;
+}
+
+.uniguajira-header .desktop-nav .login-nav-item:hover {
+  color: #cbfbcd; /* suave verde para hover en login */
+  opacity: 0.95;
+}
+
+/* Mantener blanco en modo oscuro también */
+[data-theme="dark"] .uniguajira-header .desktop-nav .login-nav-item {
+  color: #ffffff;
 }
 
 .nav-user {
@@ -280,7 +325,6 @@ body {
 }
 
 .uniguajira-login-form {
-  background: var(--glass-bg, rgba(255, 255, 255, 0.15));
   backdrop-filter: blur(15px);
   border-radius: 15px;
   border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.2));
@@ -1053,7 +1097,7 @@ body {
 
 /* Ajustes para el contenido de información de tipos de usuario */
 .contact-info h3 {
-  color: #4CAF50;
+  color: #347f8e;
   font-size: 1.1rem;
   margin-bottom: 1rem;
   font-weight: 600;
