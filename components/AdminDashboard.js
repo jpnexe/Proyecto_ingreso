@@ -130,7 +130,7 @@ export function render() {
 
 export function mount() {
   const salesCtx = document.getElementById('sales-performance-chart').getContext('2d');
-  new Chart(salesCtx, {
+  const salesChart = new Chart(salesCtx, {
     type: 'line',
     data: {
       labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May'],
@@ -167,6 +167,9 @@ export function mount() {
     },
     options: {
       responsive: true,
+      maintainAspectRatio: true,
+      aspectRatio: 2.0,
+      resizeDelay: 150,
       plugins: {
         legend: {
           position: 'top',
@@ -182,7 +185,7 @@ export function mount() {
   });
 
   const categoriesCtx = document.getElementById('popular-categories-chart').getContext('2d');
-  new Chart(categoriesCtx, {
+  const categoriesChart = new Chart(categoriesCtx, {
     type: 'doughnut',
     data: {
       labels: ['Electronics', 'Furniture', 'Toys'],
@@ -199,6 +202,9 @@ export function mount() {
     },
     options: {
         responsive: true,
+        maintainAspectRatio: true,
+        aspectRatio: 1.2,
+        resizeDelay: 150,
         plugins: {
             legend: {
                 position: 'bottom',
@@ -207,12 +213,57 @@ export function mount() {
     }
   });
 
+  // Ratios adaptativos según ancho de ventana para evitar que "crezcan" al reducir
+  const applyAdaptiveRatios = () => {
+    const w = window.innerWidth;
+    const lineRatio = w <= 480 ? 1.2 : (w <= 768 ? 1.6 : 2.0);
+    const doughnutRatio = w <= 480 ? 1.0 : (w <= 768 ? 1.1 : 1.2);
+    if (salesChart) {
+      salesChart.options.aspectRatio = lineRatio;
+      salesChart.resize();
+    }
+    if (categoriesChart) {
+      categoriesChart.options.aspectRatio = doughnutRatio;
+      categoriesChart.resize();
+    }
+  };
+  applyAdaptiveRatios();
+  window.addEventListener('resize', applyAdaptiveRatios);
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+      applyAdaptiveRatios();
+    }
+  });
+
   // Sidebar toggle: expand/collapse while remaining fixed
   const sidebar = document.querySelector('.sidebar');
   const toggleBtn = document.querySelector('.sidebar-toggle');
   if (sidebar && toggleBtn) {
-    toggleBtn.addEventListener('click', () => {
-      sidebar.classList.toggle('expanded');
+    const handleToggle = () => {
+      if (window.innerWidth <= 768) {
+        sidebar.classList.toggle('menu-open');
+      } else {
+        sidebar.classList.toggle('expanded');
+      }
+    };
+    toggleBtn.addEventListener('click', handleToggle);
+
+    // Cerrar menú móvil al seleccionar una opción
+    document.querySelectorAll('.sidebar-nav .nav-item').forEach(item => {
+      item.addEventListener('click', () => {
+        if (window.innerWidth <= 768) {
+          sidebar.classList.remove('menu-open');
+        }
+      });
+    });
+
+    // Mantener estados limpios al redimensionar
+    window.addEventListener('resize', () => {
+      if (window.innerWidth <= 768) {
+        sidebar.classList.remove('expanded');
+      } else {
+        sidebar.classList.remove('menu-open');
+      }
     });
   }
 }
