@@ -137,7 +137,7 @@ export function render() {
   `;
 }
 
-export function mount({ navigate, showToast } = {}) {
+export function mount({ currentUser, navigate, showToast } = {}) {
   // Router interno de secciones
   const sectionArea = document.getElementById('section-area');
   const navItems = Array.from(document.querySelectorAll('.sidebar-nav .nav-item')).filter(i => i.getAttribute('data-section'));
@@ -206,12 +206,46 @@ export function mount({ navigate, showToast } = {}) {
     `,
     calendario: () => `
       <section class="calendar-section chart-card">
-        <div class="chart-header"><h3>Planificador de tareas</h3></div>
-        <div class="todo-inputs">
-          <input id="todo-input" type="text" placeholder="Nueva tarea" />
-          <button id="todo-add" class="btn">Agregar</button>
+        <div class="chart-header"><h3>Tareas</h3></div>
+        <div class="calendar-board">
+          <div class="tasks-column">
+            <div class="tasks-top">
+              <input type="search" id="task-search" placeholder="Buscar" />
+              <div class="segmented" role="tablist">
+                <button class="seg-btn active" data-filter="todo">Por hacer</button>
+                <button class="seg-btn" data-filter="in_progress">En progreso</button>
+              </div>
+            </div>
+            <div id="tasks-list" class="tasks-list"></div>
+          </div>
+          <div class="task-detail-column">
+            <div class="task-detail">
+              <h3>Tarea</h3>
+              <label class="detail-label">Descripción</label>
+              <input id="detail-title" type="text" placeholder="Título de la tarea" />
+              <div class="detail-row">
+                <label>Asignado a</label>
+                <input id="detail-assignee" type="text" placeholder="Nombre" />
+              </div>
+              <div class="detail-row">
+                <label>Fecha de entrega</label>
+                <input id="detail-due" type="date" />
+              </div>
+              <div class="detail-row">
+                <label>Etiquetas</label>
+                <input id="detail-tags" type="text" placeholder="etiqueta1, etiqueta2" />
+              </div>
+              <div class="detail-row">
+                <label>Comentarios</label>
+                <textarea id="detail-comments" rows="3" placeholder="Comentarios"></textarea>
+              </div>
+              <div class="detail-actions">
+                <button id="detail-save" class="btn">Guardar</button>
+                <button id="detail-delete" class="btn btn-danger">Eliminar</button>
+              </div>
+            </div>
+          </div>
         </div>
-        <ul id="todo-list"></ul>
       </section>
     `,
     usuarios: () => `
@@ -447,41 +481,162 @@ export function mount({ navigate, showToast } = {}) {
     });
   };
 
-  const initCalendarTodo = () => {
-    const input = document.getElementById('todo-input');
-    const addBtn = document.getElementById('todo-add');
-    const list = document.getElementById('todo-list');
-    if (!input || !addBtn || !list) return;
-    const STORAGE_KEY = 'adminCalendarTasks';
-    const save = (items) => localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-    const load = () => { try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; } catch { return []; } };
-    const renderItems = (items) => {
-      list.innerHTML = items.map((t, i) => `<li data-index="${i}"><label><input type="checkbox" ${t.done? 'checked':''}> ${t.text}</label> <button class="btn" data-action="del">Eliminar</button></li>`).join('');
+  const initCalendarTasks = () => {
+    const listEl = document.getElementById('tasks-list');
+    const searchEl = document.getElementById('task-search');
+    const filterBtns = Array.from(document.querySelectorAll('.segmented .seg-btn'));
+    const detail = {
+      title: document.getElementById('detail-title'),
+      assignee: document.getElementById('detail-assignee'),
+      due: document.getElementById('detail-due'),
+      tags: document.getElementById('detail-tags'),
+      comments: document.getElementById('detail-comments'),
+      save: document.getElementById('detail-save'),
+      del: document.getElementById('detail-delete'),
     };
-    let items = load();
-    renderItems(items);
-    addBtn.addEventListener('click', () => {
-      const text = input.value.trim();
-      if (!text) return;
-      items.push({ text, done: false });
-      input.value='';
-      save(items); renderItems(items);
+    if (!listEl || !searchEl || filterBtns.length === 0) return;
+
+    const STORAGE_KEY = 'adminCalendarTasksV2';
+    const saveDB = (items) => localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+    const loadDB = () => { try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; } catch { return []; } };
+
+    let tasks = loadDB();
+    if (!tasks.length) {
+      tasks = [
+        { id: 1, title: 'Diseño de portada', status: 'todo', priority: 'high', assignee: 'Nai', due: new Date().toISOString().slice(0,10), tags: ['diseño'], comments: '' },
+        { id: 2, title: 'Integrar API', status: 'in_progress', priority: 'medium', assignee: 'Von', due: new Date(Date.now()+86400000).toISOString().slice(0,10), tags: ['api'], comments: '' },
+        { id: 3, title: 'Revisión UX', status: 'todo', priority: 'main', assignee: 'Ana', due: new Date(Date.now()+2*86400000).toISOString().slice(0,10), tags: ['ux'], comments: '' },
+        { id: 4, title: 'Pruebas QA', status: 'todo', priority: 'low', assignee: 'Juan', due: new Date(Date.now()+3*86400000).toISOString().slice(0,10), tags: ['qa'], comments: '' },
+      ];
+      saveDB(tasks);
+    }
+
+    let currentFilter = 'todo';
+    let query = '';
+    let selectedId = tasks[0]?.id || null;
+
+    const badgeClass = (p) => {
+      if (p === 'high') return 'status-badge high';
+      if (p === 'medium') return 'status-badge medium';
+      if (p === 'low') return 'status-badge low';
+      return 'status-badge main';
+    };
+
+    const labelPrioridad = (p) => {
+      if (p === 'high') return 'Alta';
+      if (p === 'medium') return 'Media';
+      if (p === 'low') return 'Baja';
+      return 'Principal';
+    };
+
+    const renderList = () => {
+      const items = tasks
+        .filter(t => t.status === currentFilter)
+        .filter(t => t.title.toLowerCase().includes(query) || (t.assignee||'').toLowerCase().includes(query));
+      listEl.classList.add('fade');
+      listEl.innerHTML = items.map(t => `
+        <div class="task-item ${t.id===selectedId?'selected':''}" data-id="${t.id}">
+          <div class="task-left"><input type="checkbox" ${t.status==='in_progress'?'checked':''} disabled></div>
+          <div class="task-main">
+            <div class="task-title">${t.title}</div>
+            <div class="task-meta">Vence ${t.due}</div>
+          </div>
+          <div class="task-right">
+            <span class="${badgeClass(t.priority)}">${labelPrioridad(t.priority)}</span>
+          </div>
+        </div>
+      `).join('');
+      // After render, bind selection
+      listEl.querySelectorAll('.task-item').forEach(el => {
+        el.addEventListener('click', () => {
+          selectedId = Number(el.getAttribute('data-id'));
+          renderList();
+          renderDetail();
+        });
+      });
+      setTimeout(() => listEl.classList.remove('fade'), 160);
+    };
+
+    const renderDetail = () => {
+      const t = tasks.find(x => x.id === selectedId);
+      if (!t) return;
+      const panel = document.querySelector('.task-detail');
+      if (panel) { panel.classList.add('fade'); setTimeout(() => panel.classList.remove('fade'), 160); }
+      detail.title.value = t.title || '';
+      detail.assignee.value = t.assignee || '';
+      detail.due.value = t.due || '';
+      detail.tags.value = (t.tags||[]).join(', ');
+      detail.comments.value = t.comments || '';
+    };
+
+    filterBtns.forEach(btn => btn.addEventListener('click', () => {
+      filterBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentFilter = btn.getAttribute('data-filter');
+      renderList();
+    }));
+
+    searchEl.addEventListener('input', (e) => {
+      query = (e.target.value || '').toLowerCase().trim();
+      renderList();
     });
-    list.addEventListener('click', (e) => {
-      const li = e.target.closest('li'); if (!li) return; const idx = Number(li.getAttribute('data-index'));
-      if (e.target.matches('input[type="checkbox"]')) { items[idx].done = e.target.checked; save(items);} 
-      if (e.target.matches('button[data-action="del"]')) { items.splice(idx,1); save(items); renderItems(items);} 
+
+    detail.save.addEventListener('click', async () => {
+      const idx = tasks.findIndex(x => x.id === selectedId);
+      if (idx < 0) return;
+      tasks[idx] = {
+        ...tasks[idx],
+        title: detail.title.value.trim(),
+        assignee: detail.assignee.value.trim(),
+        due: detail.due.value,
+        tags: detail.tags.value.split(',').map(s => s.trim()).filter(Boolean),
+        comments: detail.comments.value.trim(),
+      };
+      saveDB(tasks);
+      renderList();
+      if (typeof showToast === 'function') showToast('Tarea guardada', 'success');
+      if (currentUser && currentUser.id) await logAction(currentUser.id, 'task_saved', `Calendario: ${tasks[idx].title}`);
     });
+
+    detail.del.addEventListener('click', async () => {
+      const idx = tasks.findIndex(x => x.id === selectedId);
+      if (idx < 0) return;
+      const removed = tasks.splice(idx,1)[0];
+      saveDB(tasks);
+      selectedId = tasks[0]?.id || null;
+      renderList();
+      renderDetail();
+      if (typeof showToast === 'function') showToast('Tarea eliminada', 'warning');
+      if (currentUser && currentUser.id) await logAction(currentUser.id, 'task_deleted', `Calendario: ${removed?.title||''}`);
+    });
+
+    renderList();
+    renderDetail();
   };
 
+  let firstRender = true;
   const renderSection = (key) => {
     const tplFn = templates[key] || templates.inicio;
-    sectionArea.innerHTML = tplFn();
-    localStorage.setItem('adminLastSection', key);
-    setActive(key);
-    if (key === 'inicio') { initInicioCharts(); applyAdaptiveRatios(); initEntryRegister(); } else { salesChart = null; categoriesChart = null; }
-    if (key === 'estadisticas') initEstadisticasCharts();
-    if (key === 'calendario') initCalendarTodo();
+    const swap = () => {
+      sectionArea.innerHTML = tplFn();
+      localStorage.setItem('adminLastSection', key);
+      setActive(key);
+      if (key === 'inicio') { initInicioCharts(); applyAdaptiveRatios(); initEntryRegister(); } else { salesChart = null; categoriesChart = null; }
+      if (key === 'estadisticas') initEstadisticasCharts();
+      if (key === 'calendario') initCalendarTasks();
+    };
+    if (firstRender) {
+      swap();
+      firstRender = false;
+      return;
+    }
+    sectionArea.classList.add('view-exit');
+    setTimeout(() => {
+      swap();
+      sectionArea.classList.remove('view-exit');
+      sectionArea.classList.add('view-enter');
+      setTimeout(() => sectionArea.classList.remove('view-enter'), 240);
+    }, 200);
   };
 
   const initialSection = localStorage.getItem('adminLastSection') || 'inicio';
