@@ -9,15 +9,179 @@ db.version(1).stores({
   sessions: '++id, userId, sessionId, createdAt, lastActivity',
 });
 
-export async function hashPassword(password) {
-  const enc = new TextEncoder();
-  const data = enc.encode(password);
-  const digest = await crypto.subtle.digest('SHA-256', data);
-  return Array.from(new Uint8Array(digest))
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('');
+// Módulo DB actual: añadimos soporte SQLite (sql.js) manteniendo API
+// ... existing code ...
+
+// --- SQLite (sql.js) adapter con persistencia en IndexedDB ---
+let SQL = null;
+let sqliteDb = null;
+let sqliteReady = false;
+
+// Cargar sql.js vía npm o CDN
+async function loadSqlJs() {
+  try {
+    const initSqlJs = (await import('sql.js')).default;
+    SQL = await initSqlJs({
+      // En Vite no hace falta locateFile si se resuelve el asset
+      locateFile: (file) => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.6.2/${file}`
+    });
+  } catch (e) {
+    if (window.initSqlJs) {
+      SQL = await window.initSqlJs({
+        locateFile: (file) => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.6.2/${file}`
+      });
+    } else {
+      throw new Error('sql.js no disponible. Instala con npm i sql.js o añade CDN.');
+    }
+  }
 }
 
+// Helpers IndexedDB para persistir el archivo SQLite
+function idbOpen() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open('sqlite_store_v1', 1);
+    req.onupgradeneeded = () => req.result.createObjectStore('files');
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+async function idbGet(key) {
+  const db = await idbOpen();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('files', 'readonly');
+    const store = tx.objectStore('files');
+    const req = store.get(key);
+    req.onsuccess = () => resolve(req.result || null);
+    req.onerror = () => reject(req.error);
+  });
+}
+async function idbSet(key, value) {
+  const db = await idbOpen();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('files', 'readwrite');
+    const store = tx.objectStore('files');
+    const req = store.put(value, key);
+    req.onsuccess = () => resolve(true);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+// Abrir/crear BD SQLite y crear tablas si no existen
+async function openSQLite() {
+  if (!SQL) await loadSqlJs();
+  const buffer = await idbGet('sqlite_db_v1');
+  if (buffer) {
+    sqliteDb = new SQL.Database(new Uint8Array(buffer));
+  } else {
+    sqliteDb = new SQL.Database();
+  }
+  sqliteDb.exec(`
+    PRAGMA journal_mode = WAL;
+
+    CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      email TEXT NOT NULL UNIQUE,
+      role TEXT NOT NULL,
+      password TEXT NOT NULL,
+      avatar TEXT,
+      created_at INTEGER NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS reservas (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      date INTEGER NOT NULL,
+      day TEXT,
+      motivo TEXT,
+      status TEXT DEFAULT 'pendiente',
+      created_at INTEGER NOT NULL,
+      FOREIGN KEY(user_id) REFERENCES users(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS announcements (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT NOT NULL,
+      body TEXT NOT NULL,
+      created_at INTEGER NOT NULL,
+      author_id INTEGER
+    );
+
+    CREATE TABLE IF NOT EXISTS logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER,
+      action TEXT NOT NULL,
+      meta TEXT,
+      timestamp INTEGER NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS sessions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      token TEXT NOT NULL,
+      created_at INTEGER NOT NULL,
+      active INTEGER NOT NULL DEFAULT 1
+    );
+  `);
+  sqliteReady = true;
+}
+
+async function saveSQLite() {
+  if (!sqliteDb) return;
+  const data = sqliteDb.export(); // Uint8Array
+  await idbSet('sqlite_db_v1', data);
+}
+
+// Helpers de consulta
+function all(sql, params = []) {
+  const stmt = sqliteDb.prepare(sql);
+  stmt.bind(params);
+  const rows = [];
+  while (stmt.step()) rows.push(stmt.getAsObject());
+  stmt.free();
+  return rows;
+}
+function run(sql, params = []) {
+  sqliteDb.run(sql, params);
+}
+function scalar(sql, params = []) {
+  const rows = all(sql, params);
+  const first = rows[0];
+  if (!first) return 0;
+  const key = Object.keys(first)[0];
+  return first[key] ?? 0;
+}
+async function ensureSQLite() {
+  if (!sqliteReady) await openSQLite();
+}
+
+// --- Hash de contraseña (reutilizamos si ya existe) ---
+async function hashPassword(password) {
+  const msgUint8 = new TextEncoder().encode(password);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
+  return [...new Uint8Array(hashBuffer)].map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// --- Semilla inicial si BD está vacía ---
+async function seedIfEmpty() {
+  const count = scalar('SELECT COUNT(*) as c FROM users');
+  if (count > 0) return;
+  const demo = [
+    { name: 'Admin', email: 'admin@uni.com', role: 'admin', password: 'admin123' },
+    { name: 'María García Rodríguez', email: 'estudiante@uni.com', role: 'estudiante', password: '123456' },
+    { name: 'Carlos López Martínez', email: 'visitante@uni.com', role: 'visitante', password: '123456' },
+  ];
+  for (const u of demo) {
+    const hashed = await hashPassword(u.password);
+    run(
+      'INSERT INTO users (name, email, role, password, created_at) VALUES (?,?,?,?,?)',
+      [u.name, u.email, u.role, hashed, Date.now()]
+    );
+  }
+  await saveSQLite();
+}
+
+// --- Adaptación de initDB para usar SQLite ---
 export async function initDB() {
   const hasUsers = await db.users.count();
   if (hasUsers === 0) {

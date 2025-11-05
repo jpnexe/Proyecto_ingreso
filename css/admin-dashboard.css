@@ -168,6 +168,33 @@ body {
   gap: 20px;
 }
 
+/* Contenedor ovalado para identidad (notificaciones + perfil) */
+.identity-pill {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 12px;
+  border-radius: 9999px;
+  background: var(--identity-bg, rgba(255,255,255,0.10));
+  border: 1px solid var(--identity-border, rgba(255,255,255,0.22));
+  color: var(--identity-text, var(--text-color));
+  backdrop-filter: blur(12px);
+  box-shadow: 0 8px 24px var(--shadow-color);
+  transition: background 0.25s ease, color 0.25s ease, border-color 0.25s ease;
+}
+
+/* Adaptación a temas */
+[data-theme="light"] .identity-pill {
+  --identity-bg: rgba(255, 255, 255, 0.92);
+  --identity-border: rgba(0, 0, 0, 0.12);
+  --identity-text: #1f2937;
+}
+[data-theme="dark"] .identity-pill {
+  --identity-bg: rgba(8, 10, 16, 0.45);
+  --identity-border: rgba(255, 255, 255, 0.25);
+  --identity-text: #f9fafb;
+}
+
 /* Botón de cerrar sesión en top bar */
 .logout-btn {
   display: flex;
@@ -238,8 +265,9 @@ body {
 
 .user-role {
   font-size: 12px;
-  color: #ffffff;
+  color: var(--role-color, #6b7280);
 }
+[data-theme="dark"] .user-role { --role-color: #e5e7eb; }
 
 .kpi-grid {
   display: grid;

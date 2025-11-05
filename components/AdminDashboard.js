@@ -1,4 +1,4 @@
-import { db, logAction } from '../js/db.js';
+import { db, logAction, getUserStats, listUsers, updateUser, deleteUser } from '../js/db.js';
 
 export function render() {
   return `
@@ -24,14 +24,16 @@ export function render() {
         <header class="top-bar">
           <div class="top-bar-left"></div>
           <div class="top-bar-right">
-            <div class="notifications">
-              <i class="fas fa-bell"></i>
-              <span class="notification-badge">2</span>
-            </div>
-            <div class="user-profile">
-              <span class="user-name">Renee McKelvey</span>
-              <span class="user-role">Product Manager</span>
-              <img src="https://i.pravatar.cc/40" alt="User Avatar" class="user-avatar">
+            <div class="identity-pill">
+              <div class="notifications">
+                <i class="fas fa-bell"></i>
+                <span class="notification-badge">2</span>
+              </div>
+              <div class="user-profile">
+                <span class="user-name">Administrador</span>
+                <span class="user-role">Administrador</span>
+                <img src="https://i.pravatar.cc/40" alt="User Avatar" class="user-avatar">
+              </div>
             </div>
             <button id="logout-dashboard" class="logout-btn" title="Cerrar sesión">
               <i class="fas fa-power-off"></i>
@@ -41,95 +43,50 @@ export function render() {
         </header>
         <div id="section-area">
           <section class="kpi-grid">
-          <div class="kpi-card dark">
-            <div class="kpi-header">
-              <span>Total Sales</span>
-              <i class="fas fa-shopping-bag"></i>
+            <div class="kpi-card dark">
+              <div class="kpi-header"><span>Total de usuarios</span><i class="fas fa-users"></i></div>
+              <div id="kpi-total-users" class="kpi-value">-</div>
+              <div class="kpi-change positive">Actualizado</div>
             </div>
-            <div class="kpi-value">21 324</div>
-            <div class="kpi-change positive">+2 031</div>
-          </div>
-          <div class="kpi-card">
-            <div class="kpi-header">
-              <span>Total Income</span>
-              <i class="fas fa-dollar-sign"></i>
+            <div class="kpi-card">
+              <div class="kpi-header"><span>Administradores</span><i class="fas fa-user-shield"></i></div>
+              <div id="kpi-admins" class="kpi-value">-</div>
+              <div class="kpi-change positive">Actualizado</div>
             </div>
-            <div class="kpi-value">$221,324.50</div>
-            <div class="kpi-change negative">-$2,201</div>
-          </div>
-          <div class="kpi-card">
-            <div class="kpi-header">
-              <span>Total Sessions</span>
-              <i class="fas fa-users"></i>
+            <div class="kpi-card">
+              <div class="kpi-header"><span>Estudiantes</span><i class="fas fa-user-graduate"></i></div>
+              <div id="kpi-estudiantes" class="kpi-value">-</div>
+              <div class="kpi-change positive">Actualizado</div>
             </div>
-            <div class="kpi-value">16 703</div>
-            <div class="kpi-change positive">+3 392</div>
-          </div>
-          <div class="kpi-card clickable" id="kpi-register-entry">
-            <div class="kpi-header">
-              <span>Registrar ingreso</span>
-              <i class="fas fa-qrcode"></i>
+            <div class="kpi-card clickable" id="kpi-register-entry">
+              <div class="kpi-header"><span>Registrar ingreso</span><i class="fas fa-qrcode"></i></div>
+              <div class="kpi-value">QR / Código</div>
+              <div class="kpi-change positive">Nuevo</div>
             </div>
-            <div class="kpi-value">QR / Código</div>
-            <div class="kpi-change positive">Nuevo</div>
-          </div>
           </section>
           <section class="charts-grid">
-          <div class="chart-card">
-            <div class="chart-header">
-              <h3>Sales Performance</h3>
-              <button class="chart-settings"><i class="fas fa-cog"></i></button>
-            </div>
-            <canvas id="sales-performance-chart"></canvas>
-          </div>
-          <div class="chart-card">
-            <div class="chart-header">
-              <h3>Popular Categories</h3>
-              <button class="chart-settings"><i class="fas fa-cog"></i></button>
-            </div>
-            <canvas id="popular-categories-chart"></canvas>
-          </div>
+            <div class="chart-card"><div class="chart-header"><h3>Rendimiento de Ventas</h3><button class="chart-settings"><i class="fas fa-cog"></i></button></div><canvas id="sales-performance-chart"></canvas></div>
+            <div class="chart-card"><div class="chart-header"><h3>Categorías Populares</h3><button class="chart-settings"><i class="fas fa-cog"></i></button></div><canvas id="popular-categories-chart"></canvas></div>
           </section>
           <section class="recent-customers">
-          <div class="recent-customers-header">
-            <h3>Recent Customers</h3>
-            <button class="chart-settings"><i class="fas fa-cog"></i></button>
-          </div>
-                    <div class="recent-customers-table">
-            <table>
-              <thead>
-                <tr>
-                  <th></th>
-                  <th>Name</th>
-                  <th>Email</th>
-                  <th>Amount</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td><img src="https://i.pravatar.cc/40?img=1" alt="Avatar"></td>
-                  <td>John Doe</td>
-                  <td>john.doe@example.com</td>
-                  <td>$1,250.00</td>
-                </tr>
-                <tr>
-                  <td><img src="https://i.pravatar.cc/40?img=2" alt="Avatar"></td>
-                  <td>Jane Smith</td>
-                  <td>jane.smith@example.com</td>
-                  <td>$890.50</td>
-                </tr>
-                <tr>
-                  <td><img src="https://i.pravatar.cc/40?img=3" alt="Avatar"></td>
-                  <td>Sam Wilson</td>
-                  <td>sam.wilson@example.com</td>
-                  <td>$2,400.00</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <div class="view-all-container">
-            <a href="#" class="view-all-btn">View All</a>
-          </div>
+            <div class="recent-customers-header"><h3>Usuarios recientes</h3><button class="chart-settings"><i class="fas fa-cog"></i></button></div>
+            <div class="recent-customers-table">
+              <table>
+                <thead>
+                  <tr>
+                    <th></th>
+                    <th>Nombre</th>
+                    <th>Correo</th>
+                    <th>Rol</th>
+                  </tr>
+                </thead>
+                <tbody id="recent-users-body"></tbody>
+                <tfoot id="recent-users-summary"></tfoot>
+              </table>
+            </div>
+            <div class="view-all-container">
+              <a href="#" class="view-all-btn">Ver todos</a>
+            </div>
           </section>
         </div>
       </main>
@@ -148,31 +105,39 @@ export function mount({ currentUser, navigate, showToast } = {}) {
     });
   };
 
+  // Actualizar el nombre del administrador en el óvalo superior
+  const pillNameEl = document.querySelector('.identity-pill .user-name');
+  const pillRoleEl = document.querySelector('.identity-pill .user-role');
+  if (pillRoleEl) {
+    pillRoleEl.textContent = 'Administrador';
+  }
+  const pillAvatarEl = document.querySelector('.identity-pill .user-avatar');
+  if (pillNameEl) pillNameEl.textContent = currentUser?.name || 'Administrador';
+  if (pillRoleEl) pillRoleEl.textContent = 'Administrador';
+  if (pillAvatarEl && currentUser?.name) pillAvatarEl.alt = currentUser.name;
+
   const templates = {
     inicio: () => `
       <section class="kpi-grid">
-        <div class="kpi-card dark"><div class="kpi-header"><span>Total Sales</span><i class="fas fa-shopping-bag"></i></div><div class="kpi-value">21 324</div><div class="kpi-change positive">+2 031</div></div>
-        <div class="kpi-card"><div class="kpi-header"><span>Total Income</span><i class="fas fa-dollar-sign"></i></div><div class="kpi-value">$221,324.50</div><div class="kpi-change negative">-$2,201</div></div>
-        <div class="kpi-card"><div class="kpi-header"><span>Total Sessions</span><i class="fas fa-users"></i></div><div class="kpi-value">16 703</div><div class="kpi-change positive">+3 392</div></div>
+        <div class="kpi-card dark"><div class="kpi-header"><span>Total de usuarios</span><i class="fas fa-users"></i></div><div id="kpi-total-users" class="kpi-value">-</div><div class="kpi-change positive">Actualizado</div></div>
+        <div class="kpi-card"><div class="kpi-header"><span>Administradores</span><i class="fas fa-user-shield"></i></div><div id="kpi-admins" class="kpi-value">-</div><div class="kpi-change positive">Actualizado</div></div>
+        <div class="kpi-card"><div class="kpi-header"><span>Estudiantes</span><i class="fas fa-user-graduate"></i></div><div id="kpi-estudiantes" class="kpi-value">-</div><div class="kpi-change positive">Actualizado</div></div>
         <div class="kpi-card clickable" id="kpi-register-entry"><div class="kpi-header"><span>Registrar ingreso</span><i class="fas fa-qrcode"></i></div><div class="kpi-value">QR / Código</div><div class="kpi-change positive">Nuevo</div></div>
       </section>
       <section class="charts-grid">
-        <div class="chart-card"><div class="chart-header"><h3>Sales Performance</h3><button class="chart-settings"><i class="fas fa-cog"></i></button></div><canvas id="sales-performance-chart"></canvas></div>
-        <div class="chart-card"><div class="chart-header"><h3>Popular Categories</h3><button class="chart-settings"><i class="fas fa-cog"></i></button></div><canvas id="popular-categories-chart"></canvas></div>
+        <div class="chart-card"><div class="chart-header"><h3>Rendimiento de Ventas</h3><button class="chart-settings"><i class="fas fa-cog"></i></button></div><canvas id="sales-performance-chart"></canvas></div>
+        <div class="chart-card"><div class="chart-header"><h3>Categorías Populares</h3><button class="chart-settings"><i class="fas fa-cog"></i></button></div><canvas id="popular-categories-chart"></canvas></div>
       </section>
       <section class="recent-customers">
-        <div class="recent-customers-header"><h3>Recent Customers</h3><button class="chart-settings"><i class="fas fa-cog"></i></button></div>
+        <div class="recent-customers-header"><h3>Usuarios recientes</h3><button class="chart-settings"><i class="fas fa-cog"></i></button></div>
         <div class="recent-customers-table">
           <table>
-            <thead><tr><th></th><th>Name</th><th>Email</th><th>Amount</th></tr></thead>
-            <tbody>
-              <tr><td><img src="https://i.pravatar.cc/40?img=1" alt="Avatar"></td><td>John Doe</td><td>john.doe@example.com</td><td>$1,250.00</td></tr>
-              <tr><td><img src="https://i.pravatar.cc/40?img=2" alt="Avatar"></td><td>Jane Smith</td><td>jane.smith@example.com</td><td>$890.50</td></tr>
-              <tr><td><img src="https://i.pravatar.cc/40?img=3" alt="Avatar"></td><td>Sam Wilson</td><td>sam.wilson@example.com</td><td>$2,400.00</td></tr>
-            </tbody>
+            <thead><tr><th></th><th>Nombre</th><th>Correo</th><th>Rol</th></tr></thead>
+            <tbody id="recent-users-body"></tbody>
+            <tfoot id="recent-users-summary"></tfoot>
           </table>
         </div>
-        <div class="view-all-container"><a href="#" class="view-all-btn">View All</a></div>
+        <div class="view-all-container"><a href="#" class="view-all-btn">Ver todos</a></div>
       </section>
     `,
     reportes: () => `
@@ -250,22 +215,70 @@ export function mount({ currentUser, navigate, showToast } = {}) {
     `,
     usuarios: () => `
       <section class="users-section chart-card">
-        <div class="chart-header"><h3>Configuración de roles</h3></div>
-        <div class="roles-grid">
-          <div>
-            <h4>Visitantes</h4>
-            <label><input type="checkbox" id="visitors-allow-register"> Permitir registro</label>
-          </div>
-          <div>
-            <h4>Estudiantes</h4>
-            <label><input type="checkbox" id="students-allow-messages"> Permitir mensajes</label>
-          </div>
-          <div>
-            <h4>Administradores</h4>
-            <label><input type="checkbox" id="admins-allow-reports"> Permitir reportes extendidos</label>
+        <div class="chart-header"><h3>Gestión de usuarios</h3></div>
+        <div class="users-actions">
+          <input type="search" id="user-search" placeholder="Buscar por nombre o correo" />
+        </div>
+        <div class="users-table-wrap">
+          <table class="users-table">
+            <thead>
+              <tr>
+                <th>Nombre</th>
+                <th>Correo</th>
+                <th>Rol</th>
+                <th>Estado</th>
+                <th>Carrera</th>
+                <th>Semestre</th>
+                <th style="width:140px">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="users-table-body"></tbody>
+          </table>
+        </div>
+
+        <!-- Modal de edición de usuario -->
+        <div id="user-edit-modal" class="modal hidden">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h3>Editar usuario</h3>
+              <button class="modal-close" id="user-edit-close">&times;</button>
+            </div>
+            <div class="modal-body">
+              <div class="form-grid">
+                <input type="hidden" id="edit-user-id" />
+                <label>Nombre</label>
+                <input type="text" id="edit-user-name" placeholder="Nombre completo" />
+                <label>Correo</label>
+                <input type="email" id="edit-user-email" placeholder="correo@ejemplo.com" />
+                <label>Rol</label>
+                <select id="edit-user-role">
+                  <option value="admin">Administrador</option>
+                  <option value="estudiante">Estudiante</option>
+                  <option value="visitante">Visitante</option>
+                </select>
+                <label>Estado</label>
+                <select id="edit-user-status">
+                  <option value="activo">Activo</option>
+                  <option value="inactivo">Inactivo</option>
+                </select>
+                <label>Nueva contraseña</label>
+                <input type="password" id="edit-user-password" placeholder="Deja vacío para mantener" />
+
+                <div id="student-fields" class="student-only">
+                  <label>Carrera</label>
+                  <input type="text" id="edit-user-career" placeholder="Ej: ingeniería" />
+                  <label>Semestre</label>
+                  <input type="text" id="edit-user-semester" placeholder="Ej: 3" />
+                </div>
+              </div>
+              <p id="user-edit-error" class="form-error"></p>
+            </div>
+            <div class="modal-footer">
+              <button id="user-edit-save" class="btn">Guardar cambios</button>
+              <button id="user-edit-delete" class="btn btn-danger">Eliminar usuario</button>
+            </div>
           </div>
         </div>
-        <button id="save-user-config" class="btn">Guardar configuración</button>
       </section>
     `,
     ajustes: () => `
@@ -321,6 +334,57 @@ export function mount({ currentUser, navigate, showToast } = {}) {
       },
       options: { responsive: true, maintainAspectRatio: true, aspectRatio: 1.2, resizeDelay: 150, plugins: { legend: { position: 'bottom' } } }
     });
+  };
+
+  // Datos reales para KPIs y usuarios recientes
+  const roleLabel = (r) => {
+    if (!r) return '';
+    if (r === 'admin') return 'Administrador';
+    if (r === 'estudiante') return 'Estudiante';
+    if (r === 'visitante') return 'Visitante';
+    return r;
+  };
+
+  const populateRecentUsers = async () => {
+    const tbody = document.getElementById('recent-users-body');
+    const tfoot = document.getElementById('recent-users-summary');
+    if (!tbody) return;
+    let users = await listUsers();
+    users = (users || []).sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+    const top = users.slice(0, 5);
+    tbody.innerHTML = top.map(u => `
+      <tr>
+        <td><div class="user-avatar">${(u.name||'').charAt(0).toUpperCase()}</div></td>
+        <td>${u.name || ''}</td>
+        <td>${u.email || ''}</td>
+        <td>${roleLabel(u.role)}</td>
+      </tr>
+    `).join('');
+
+    if (tfoot) {
+      const stats = await getUserStats();
+      tfoot.innerHTML = `
+        <tr class="summary-row">
+          <td></td>
+          <td colspan="3">Total: ${stats.total||0} | Administradores: ${stats.admins||0} | Estudiantes: ${stats.estudiantes||0} | Visitantes: ${stats.visitantes||0}</td>
+        </tr>
+      `;
+    }
+  };
+
+  const initInicioData = async () => {
+    try {
+      const stats = await getUserStats();
+      const totalEl = document.getElementById('kpi-total-users');
+      const adminsEl = document.getElementById('kpi-admins');
+      const estEl = document.getElementById('kpi-estudiantes');
+      if (totalEl) totalEl.textContent = String(stats.total || 0);
+      if (adminsEl) adminsEl.textContent = String(stats.admins || 0);
+      if (estEl) estEl.textContent = String(stats.estudiantes || 0);
+      await populateRecentUsers();
+    } catch (e) {
+      console.error('Error al inicializar KPIs de Inicio:', e);
+    }
   };
 
   // --- Registro de ingreso (QR / Código) ---
@@ -465,13 +529,14 @@ export function mount({ currentUser, navigate, showToast } = {}) {
     }
   });
 
-  const initEstadisticasCharts = () => {
+  const initEstadisticasCharts = async () => {
     const usersCanvas = document.getElementById('users-stats-chart');
     const activityCanvas = document.getElementById('activity-stats-chart');
     if (!usersCanvas || !activityCanvas) return;
+    const baseStats = await getUserStats();
     new Chart(usersCanvas.getContext('2d'), {
       type: 'bar',
-      data: { labels: ['Visitantes','Estudiantes','Admins'], datasets: [{ label: 'Activos', data: [120,340,12], backgroundColor: ['#3498db','#2ecc71','#e74c3c'] }] },
+      data: { labels: ['Visitantes','Estudiantes','Administradores'], datasets: [{ label: 'Usuarios', data: [baseStats.visitantes||0, baseStats.estudiantes||0, baseStats.admins||0], backgroundColor: ['#3498db','#2ecc71','#e74c3c'] }] },
       options: { responsive: true, maintainAspectRatio: true, aspectRatio: 1.6 }
     });
     new Chart(activityCanvas.getContext('2d'), {
@@ -614,6 +679,170 @@ export function mount({ currentUser, navigate, showToast } = {}) {
     renderDetail();
   };
 
+  // --- Gestión de Usuarios: ver y editar ---
+  const initUsuariosAdmin = () => {
+    const tbody = document.getElementById('users-table-body');
+    const searchEl = document.getElementById('user-search');
+    const modal = document.getElementById('user-edit-modal');
+    const closeBtn = document.getElementById('user-edit-close');
+    const saveBtn = document.getElementById('user-edit-save');
+    const deleteBtn = document.getElementById('user-edit-delete');
+    const errEl = document.getElementById('user-edit-error');
+    const idEl = document.getElementById('edit-user-id');
+    const nameEl = document.getElementById('edit-user-name');
+    const emailEl = document.getElementById('edit-user-email');
+    const roleEl = document.getElementById('edit-user-role');
+    const statusEl = document.getElementById('edit-user-status');
+    const passEl = document.getElementById('edit-user-password');
+    const careerEl = document.getElementById('edit-user-career');
+    const semesterEl = document.getElementById('edit-user-semester');
+    const studentFields = document.getElementById('student-fields');
+
+    if (!tbody || !modal) return;
+
+    let usersCache = [];
+    let query = '';
+
+    const roleLabel = (r) => {
+      if (r === 'admin') return 'Administrador';
+      if (r === 'estudiante') return 'Estudiante';
+      if (r === 'visitante') return 'Visitante';
+      return r || '';
+    };
+
+    const openModal = (u) => {
+      errEl.textContent = '';
+      idEl.value = u.id;
+      nameEl.value = u.name || '';
+      emailEl.value = u.email || '';
+      roleEl.value = u.role || 'visitante';
+      statusEl.value = u.status || 'activo';
+      passEl.value = '';
+      careerEl.value = u.career || '';
+      semesterEl.value = u.semester || '';
+      studentFields.style.display = roleEl.value === 'estudiante' ? 'grid' : 'none';
+      modal.classList.remove('hidden');
+    };
+
+    const closeModal = () => {
+      modal.classList.add('hidden');
+    };
+
+    const renderTable = async () => {
+      usersCache = await listUsers();
+      const filtered = (usersCache || []).filter(u => {
+        const t = query.toLowerCase();
+        return (u.name||'').toLowerCase().includes(t) || (u.email||'').toLowerCase().includes(t);
+      });
+      tbody.innerHTML = filtered.map(u => `
+        <tr data-id="${u.id}">
+          <td>${u.name||''}</td>
+          <td>${u.email||''}</td>
+          <td>${roleLabel(u.role)}</td>
+          <td>${u.status||''}</td>
+          <td>${u.career||''}</td>
+          <td>${u.semester||''}</td>
+          <td>
+            <button class="btn btn-sm user-edit">Editar</button>
+            <button class="btn btn-danger btn-sm user-delete">Eliminar</button>
+          </td>
+        </tr>
+      `).join('');
+
+      // Bind eventos por fila
+      tbody.querySelectorAll('.user-edit').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          const tr = e.target.closest('tr');
+          const id = Number(tr.getAttribute('data-id'));
+          const user = usersCache.find(x => x.id === id) || await db.users.get(id);
+          if (user) openModal(user);
+        });
+      });
+
+      tbody.querySelectorAll('.user-delete').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          const tr = e.target.closest('tr');
+          const id = Number(tr.getAttribute('data-id'));
+          if (!id) return;
+          if (!confirm('¿Eliminar este usuario?')) return;
+          try {
+            await deleteUser(id);
+            if (typeof showToast === 'function') showToast('Usuario eliminado', 'warning');
+            renderTable();
+          } catch (err) {
+            if (typeof showToast === 'function') showToast('Error al eliminar: '+err.message, 'error');
+          }
+        });
+      });
+    };
+
+    // Guardar cambios
+    const saveChanges = async () => {
+      errEl.textContent = '';
+      const id = Number(idEl.value);
+      const name = nameEl.value.trim();
+      const email = emailEl.value.trim().toLowerCase();
+      const role = roleEl.value;
+      const status = statusEl.value;
+      const password = passEl.value;
+      const career = careerEl.value.trim();
+      const semester = semesterEl.value.trim();
+
+      if (!id || !name || !email || !role) {
+        errEl.textContent = 'Completa nombre, correo y rol.';
+        return;
+      }
+
+      // Validar correo único
+      const existing = await db.users.where('email').equals(email).first();
+      if (existing && existing.id !== id) {
+        errEl.textContent = 'Ese correo ya está registrado por otro usuario.';
+        return;
+      }
+
+      const update = { name, email, role, status };
+      if (password) update.password = password; // se hashea en updateUser
+      if (role === 'estudiante') { update.career = career; update.semester = semester; }
+      else { update.career = ''; update.semester = ''; }
+
+      try {
+        await updateUser(id, update);
+        if (typeof showToast === 'function') showToast('Usuario actualizado', 'success');
+        closeModal();
+        renderTable();
+      } catch (err) {
+        errEl.textContent = 'Error al guardar: ' + (err.message || err);
+      }
+    };
+
+    // Eventos UI
+    roleEl.addEventListener('change', () => {
+      studentFields.style.display = roleEl.value === 'estudiante' ? 'grid' : 'none';
+    });
+    saveBtn.addEventListener('click', saveChanges);
+    deleteBtn.addEventListener('click', async () => {
+      const id = Number(idEl.value);
+      if (!id) return;
+      if (!confirm('¿Eliminar este usuario?')) return;
+      try {
+        await deleteUser(id);
+        if (typeof showToast === 'function') showToast('Usuario eliminado', 'warning');
+        closeModal();
+        renderTable();
+      } catch (err) {
+        errEl.textContent = 'Error al eliminar: ' + (err.message || err);
+      }
+    });
+    closeBtn.addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+
+    if (searchEl) {
+      searchEl.addEventListener('input', (e) => { query = (e.target.value||'').trim(); renderTable(); });
+    }
+
+    renderTable();
+  };
+
   let firstRender = true;
   const renderSection = (key) => {
     const tplFn = templates[key] || templates.inicio;
@@ -621,9 +850,10 @@ export function mount({ currentUser, navigate, showToast } = {}) {
       sectionArea.innerHTML = tplFn();
       localStorage.setItem('adminLastSection', key);
       setActive(key);
-      if (key === 'inicio') { initInicioCharts(); applyAdaptiveRatios(); initEntryRegister(); } else { salesChart = null; categoriesChart = null; }
+      if (key === 'inicio') { initInicioCharts(); initInicioData(); applyAdaptiveRatios(); initEntryRegister(); } else { salesChart = null; categoriesChart = null; }
       if (key === 'estadisticas') initEstadisticasCharts();
       if (key === 'calendario') initCalendarTasks();
+      if (key === 'usuarios') initUsuariosAdmin();
     };
     if (firstRender) {
       swap();
