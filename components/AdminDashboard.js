@@ -4,7 +4,7 @@ export function render() {
       <aside class="sidebar">
         <div class="sidebar-header">
           <button class="sidebar-toggle"><i class="fas fa-bars"></i></button>
-          <span>@ Your Company</span>
+          <span>Mi ingreso dashboard</span>
         </div>
         <nav class="sidebar-nav">
           <a href="#" class="nav-item"><i class="fas fa-search"></i><span class="nav-label">Buscar</span></a>
@@ -15,6 +15,7 @@ export function render() {
           <a href="#" class="nav-item"><i class="fas fa-calendar-alt"></i><span class="nav-label">Calendario</span></a>
           <a href="#" class="nav-item"><i class="fas fa-users"></i><span class="nav-label">Usuarios</span></a>
           <a href="#" class="nav-item"><i class="fas fa-cog"></i><span class="nav-label">Ajustes</span></a>
+          <button type="button" class="nav-item theme-toggle"><i class="fas fa-moon"></i><span class="nav-label">Modo oscuro</span></button>
         </nav>
       </aside>
       <main class="main-content">
@@ -30,6 +31,10 @@ export function render() {
               <span class="user-role">Product Manager</span>
               <img src="https://i.pravatar.cc/40" alt="User Avatar" class="user-avatar">
             </div>
+            <button id="logout-dashboard" class="logout-btn" title="Cerrar sesión">
+              <i class="fas fa-power-off"></i>
+              <span class="logout-label">Cerrar sesión</span>
+            </button>
           </div>
         </header>
         <section class="kpi-grid">
@@ -128,7 +133,7 @@ export function render() {
   `;
 }
 
-export function mount() {
+export function mount({ navigate, showToast } = {}) {
   const salesCtx = document.getElementById('sales-performance-chart').getContext('2d');
   const salesChart = new Chart(salesCtx, {
     type: 'line',
@@ -263,6 +268,58 @@ export function mount() {
         sidebar.classList.remove('expanded');
       } else {
         sidebar.classList.remove('menu-open');
+      }
+    });
+  }
+
+  // Theme toggle: claro/oscuro con persistencia en localStorage
+  const themeToggle = document.querySelector('.theme-toggle');
+  if (themeToggle) {
+    const themeIcon = themeToggle.querySelector('i');
+    const themeLabel = themeToggle.querySelector('.nav-label');
+
+    const getTheme = () => {
+      return localStorage.getItem('theme') || document.documentElement.getAttribute('data-theme') || 'light';
+    };
+    const setTheme = (theme) => {
+      document.documentElement.setAttribute('data-theme', theme);
+      localStorage.setItem('theme', theme);
+      if (theme === 'dark') {
+        themeIcon.classList.remove('fa-moon');
+        themeIcon.classList.add('fa-sun');
+        if (themeLabel) themeLabel.textContent = 'Modo claro';
+      } else {
+        themeIcon.classList.remove('fa-sun');
+        themeIcon.classList.add('fa-moon');
+        if (themeLabel) themeLabel.textContent = 'Modo oscuro';
+      }
+    };
+
+    // Inicializa con el tema guardado o actual
+    setTheme(getTheme());
+
+    themeToggle.addEventListener('click', () => {
+      const current = getTheme();
+      const next = current === 'dark' ? 'light' : 'dark';
+      setTheme(next);
+    });
+  }
+
+  // Logout del dashboard: limpiar usuario y navegar a login
+  const logoutBtn = document.getElementById('logout-dashboard');
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', () => {
+      try {
+        localStorage.removeItem('currentUser');
+        sessionStorage.removeItem('currentUser');
+      } catch (e) {}
+      if (typeof showToast === 'function') {
+        showToast('Sesión cerrada.', 'success');
+      }
+      if (typeof navigate === 'function') {
+        navigate('login');
+      } else {
+        location.hash = '#/login';
       }
     });
   }
