@@ -1,3 +1,5 @@
+import { db, logAction } from '../js/db.js';
+
 export function render() {
   return `
     <div class="admin-dashboard-modern">
@@ -7,14 +9,14 @@ export function render() {
           <span>Mi ingreso dashboard</span>
         </div>
         <nav class="sidebar-nav">
-          <a href="#" class="nav-item"><i class="fas fa-search"></i><span class="nav-label">Buscar</span></a>
-          <a href="#" class="nav-item active"><i class="fas fa-home"></i><span class="nav-label">Inicio</span></a>
-          <a href="#" class="nav-item"><i class="fas fa-flag"></i><span class="nav-label">Reportes</span></a>
-          <a href="#" class="nav-item"><i class="fas fa-chart-pie"></i><span class="nav-label">Estadísticas</span></a>
-          <a href="#" class="nav-item"><i class="fas fa-envelope"></i><span class="nav-label">Mensajes</span></a>
-          <a href="#" class="nav-item"><i class="fas fa-calendar-alt"></i><span class="nav-label">Calendario</span></a>
-          <a href="#" class="nav-item"><i class="fas fa-users"></i><span class="nav-label">Usuarios</span></a>
-          <a href="#" class="nav-item"><i class="fas fa-cog"></i><span class="nav-label">Ajustes</span></a>
+          <a href="#" class="nav-item" data-section="buscar"><i class="fas fa-search"></i><span class="nav-label">Buscar</span></a>
+          <a href="#" class="nav-item active" data-section="inicio"><i class="fas fa-home"></i><span class="nav-label">Inicio</span></a>
+          <a href="#" class="nav-item" data-section="reportes"><i class="fas fa-flag"></i><span class="nav-label">Reportes</span></a>
+          <a href="#" class="nav-item" data-section="estadisticas"><i class="fas fa-chart-pie"></i><span class="nav-label">Estadísticas</span></a>
+          <a href="#" class="nav-item" data-section="mensajes"><i class="fas fa-envelope"></i><span class="nav-label">Mensajes</span></a>
+          <a href="#" class="nav-item" data-section="calendario"><i class="fas fa-calendar-alt"></i><span class="nav-label">Calendario</span></a>
+          <a href="#" class="nav-item" data-section="usuarios"><i class="fas fa-users"></i><span class="nav-label">Usuarios</span></a>
+          <a href="#" class="nav-item" data-section="ajustes"><i class="fas fa-cog"></i><span class="nav-label">Ajustes</span></a>
           <button type="button" class="nav-item theme-toggle"><i class="fas fa-moon"></i><span class="nav-label">Modo oscuro</span></button>
         </nav>
       </aside>
@@ -37,7 +39,8 @@ export function render() {
             </button>
           </div>
         </header>
-        <section class="kpi-grid">
+        <div id="section-area">
+          <section class="kpi-grid">
           <div class="kpi-card dark">
             <div class="kpi-header">
               <span>Total Sales</span>
@@ -62,16 +65,16 @@ export function render() {
             <div class="kpi-value">16 703</div>
             <div class="kpi-change positive">+3 392</div>
           </div>
-          <div class="kpi-card">
+          <div class="kpi-card clickable" id="kpi-register-entry">
             <div class="kpi-header">
-              <span>Conversion Rate</span>
-              <i class="fas fa-user-check"></i>
+              <span>Registrar ingreso</span>
+              <i class="fas fa-qrcode"></i>
             </div>
-            <div class="kpi-value">12.8%</div>
-            <div class="kpi-change negative">-1.22%</div>
+            <div class="kpi-value">QR / Código</div>
+            <div class="kpi-change positive">Nuevo</div>
           </div>
-        </section>
-        <section class="charts-grid">
+          </section>
+          <section class="charts-grid">
           <div class="chart-card">
             <div class="chart-header">
               <h3>Sales Performance</h3>
@@ -86,8 +89,8 @@ export function render() {
             </div>
             <canvas id="popular-categories-chart"></canvas>
           </div>
-        </section>
-        <section class="recent-customers">
+          </section>
+          <section class="recent-customers">
           <div class="recent-customers-header">
             <h3>Recent Customers</h3>
             <button class="chart-settings"><i class="fas fa-cog"></i></button>
@@ -127,96 +130,284 @@ export function render() {
           <div class="view-all-container">
             <a href="#" class="view-all-btn">View All</a>
           </div>
-        </section>
+          </section>
+        </div>
       </main>
     </div>
   `;
 }
 
 export function mount({ navigate, showToast } = {}) {
-  const salesCtx = document.getElementById('sales-performance-chart').getContext('2d');
-  const salesChart = new Chart(salesCtx, {
-    type: 'line',
-    data: {
-      labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May'],
-      datasets: [
-        {
-          label: 'Laptops',
-          data: [65, 59, 80, 81, 56],
-          borderColor: '#33374c',
-          tension: 0.4,
-          fill: false,
-        },
-        {
-          label: 'Headsets',
-          data: [28, 48, 40, 19, 86],
-          borderColor: '#a0a0a0',
-          tension: 0.4,
-          fill: false,
-        },
-        {
-          label: 'Monitors',
-          data: [18, 58, 30, 69, 26],
-          borderColor: '#c0c0c0',
-          tension: 0.4,
-          fill: false,
-        },
-        {
-          label: 'Phones',
-          data: [38, 28, 60, 59, 76],
-          borderColor: '#e0e0e0',
-          tension: 0.4,
-          fill: false,
-        },
-      ],
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: true,
-      aspectRatio: 2.0,
-      resizeDelay: 150,
-      plugins: {
-        legend: {
-          position: 'top',
-          align: 'start',
-        },
-      },
-      scales: {
-        y: {
-          beginAtZero: true,
-        },
-      },
-    },
-  });
+  // Router interno de secciones
+  const sectionArea = document.getElementById('section-area');
+  const navItems = Array.from(document.querySelectorAll('.sidebar-nav .nav-item')).filter(i => i.getAttribute('data-section'));
+  const setActive = (key) => {
+    navItems.forEach(i => {
+      if (i.getAttribute('data-section') === key) i.classList.add('active');
+      else i.classList.remove('active');
+    });
+  };
 
-  const categoriesCtx = document.getElementById('popular-categories-chart').getContext('2d');
-  const categoriesChart = new Chart(categoriesCtx, {
-    type: 'doughnut',
-    data: {
-      labels: ['Electronics', 'Furniture', 'Toys'],
-      datasets: [{
-        label: 'Popular Categories',
-        data: [300, 150, 100],
-        backgroundColor: [
-          '#33374c',
-          '#a0a0a0',
-          '#e0e0e0',
+  const templates = {
+    inicio: () => `
+      <section class="kpi-grid">
+        <div class="kpi-card dark"><div class="kpi-header"><span>Total Sales</span><i class="fas fa-shopping-bag"></i></div><div class="kpi-value">21 324</div><div class="kpi-change positive">+2 031</div></div>
+        <div class="kpi-card"><div class="kpi-header"><span>Total Income</span><i class="fas fa-dollar-sign"></i></div><div class="kpi-value">$221,324.50</div><div class="kpi-change negative">-$2,201</div></div>
+        <div class="kpi-card"><div class="kpi-header"><span>Total Sessions</span><i class="fas fa-users"></i></div><div class="kpi-value">16 703</div><div class="kpi-change positive">+3 392</div></div>
+        <div class="kpi-card clickable" id="kpi-register-entry"><div class="kpi-header"><span>Registrar ingreso</span><i class="fas fa-qrcode"></i></div><div class="kpi-value">QR / Código</div><div class="kpi-change positive">Nuevo</div></div>
+      </section>
+      <section class="charts-grid">
+        <div class="chart-card"><div class="chart-header"><h3>Sales Performance</h3><button class="chart-settings"><i class="fas fa-cog"></i></button></div><canvas id="sales-performance-chart"></canvas></div>
+        <div class="chart-card"><div class="chart-header"><h3>Popular Categories</h3><button class="chart-settings"><i class="fas fa-cog"></i></button></div><canvas id="popular-categories-chart"></canvas></div>
+      </section>
+      <section class="recent-customers">
+        <div class="recent-customers-header"><h3>Recent Customers</h3><button class="chart-settings"><i class="fas fa-cog"></i></button></div>
+        <div class="recent-customers-table">
+          <table>
+            <thead><tr><th></th><th>Name</th><th>Email</th><th>Amount</th></tr></thead>
+            <tbody>
+              <tr><td><img src="https://i.pravatar.cc/40?img=1" alt="Avatar"></td><td>John Doe</td><td>john.doe@example.com</td><td>$1,250.00</td></tr>
+              <tr><td><img src="https://i.pravatar.cc/40?img=2" alt="Avatar"></td><td>Jane Smith</td><td>jane.smith@example.com</td><td>$890.50</td></tr>
+              <tr><td><img src="https://i.pravatar.cc/40?img=3" alt="Avatar"></td><td>Sam Wilson</td><td>sam.wilson@example.com</td><td>$2,400.00</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="view-all-container"><a href="#" class="view-all-btn">View All</a></div>
+      </section>
+    `,
+    reportes: () => `
+      <section class="reports-section chart-card">
+        <div class="chart-header"><h3>Novedades del sistema</h3></div>
+        <ul>
+          <li>Actualización de seguridad aplicada (v1.2.3).</li>
+          <li>Nuevo módulo de estadísticas integrado.</li>
+          <li>Mejoras de rendimiento en el panel.</li>
+          <li>Correcciones de UI en móviles.</li>
+        </ul>
+      </section>
+    `,
+    estadisticas: () => `
+      <section class="charts-grid">
+        <div class="chart-card"><div class="chart-header"><h3>Usuarios activos por rol</h3></div><canvas id="users-stats-chart"></canvas></div>
+        <div class="chart-card"><div class="chart-header"><h3>Actividad semanal</h3></div><canvas id="activity-stats-chart"></canvas></div>
+      </section>
+    `,
+    mensajes: () => `
+      <section class="messages-section chart-card">
+        <div class="chart-header"><h3>Mensajes</h3></div>
+        <table>
+          <thead><tr><th>Remitente</th><th>Asunto</th><th>Estado</th></tr></thead>
+          <tbody>
+            <tr><td>Soporte</td><td>Bienvenido al sistema</td><td>Leído</td></tr>
+            <tr><td>Dirección</td><td>Actualización de política</td><td>No leído</td></tr>
+          </tbody>
+        </table>
+      </section>
+    `,
+    calendario: () => `
+      <section class="calendar-section chart-card">
+        <div class="chart-header"><h3>Planificador de tareas</h3></div>
+        <div class="todo-inputs">
+          <input id="todo-input" type="text" placeholder="Nueva tarea" />
+          <button id="todo-add" class="btn">Agregar</button>
+        </div>
+        <ul id="todo-list"></ul>
+      </section>
+    `,
+    usuarios: () => `
+      <section class="users-section chart-card">
+        <div class="chart-header"><h3>Configuración de roles</h3></div>
+        <div class="roles-grid">
+          <div>
+            <h4>Visitantes</h4>
+            <label><input type="checkbox" id="visitors-allow-register"> Permitir registro</label>
+          </div>
+          <div>
+            <h4>Estudiantes</h4>
+            <label><input type="checkbox" id="students-allow-messages"> Permitir mensajes</label>
+          </div>
+          <div>
+            <h4>Administradores</h4>
+            <label><input type="checkbox" id="admins-allow-reports"> Permitir reportes extendidos</label>
+          </div>
+        </div>
+        <button id="save-user-config" class="btn">Guardar configuración</button>
+      </section>
+    `,
+    ajustes: () => `
+      <section class="settings-section chart-card">
+        <div class="chart-header"><h3>Ajustes del panel</h3></div>
+        <p>Opciones generales del dashboard. Próximamente más controles.</p>
+      </section>
+    `,
+    buscar: () => `
+      <section class="search-section chart-card">
+        <div class="chart-header"><h3>Buscar</h3></div>
+        <input type="search" id="search-input" placeholder="Buscar en el panel" />
+        <p>Escribe para filtrar contenido (demo).</p>
+      </section>
+    `,
+  };
+
+  let salesChart = null;
+  let categoriesChart = null;
+
+  const initInicioCharts = () => {
+    const salesCanvas = document.getElementById('sales-performance-chart');
+    const categoriesCanvas = document.getElementById('popular-categories-chart');
+    if (!salesCanvas || !categoriesCanvas) return;
+    const salesCtx = salesCanvas.getContext('2d');
+    salesChart = new Chart(salesCtx, {
+      type: 'line',
+      data: {
+        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May'],
+        datasets: [
+          { label: 'Laptops', data: [65,59,80,81,56], borderColor: '#33374c', tension: 0.4, fill: false },
+          { label: 'Headsets', data: [28,48,40,19,86], borderColor: '#a0a0a0', tension: 0.4, fill: false },
+          { label: 'Monitors', data: [18,58,30,69,26], borderColor: '#c0c0c0', tension: 0.4, fill: false },
+          { label: 'Phones', data: [38,28,60,59,76], borderColor: '#e0e0e0', tension: 0.4, fill: false },
         ],
-        borderWidth: 0,
-      }]
-    },
-    options: {
+      },
+      options: {
         responsive: true,
         maintainAspectRatio: true,
-        aspectRatio: 1.2,
+        aspectRatio: 2.0,
         resizeDelay: 150,
-        plugins: {
-            legend: {
-                position: 'bottom',
-            }
-        }
+        plugins: { legend: { position: 'top', align: 'start' } },
+        scales: { y: { beginAtZero: true } },
+      },
+    });
+
+    const categoriesCtx = categoriesCanvas.getContext('2d');
+    categoriesChart = new Chart(categoriesCtx, {
+      type: 'doughnut',
+      data: {
+        labels: ['Electronics', 'Furniture', 'Toys'],
+        datasets: [{ label: 'Popular Categories', data: [300,150,100], backgroundColor: ['#33374c','#a0a0a0','#e0e0e0'], borderWidth: 0 }]
+      },
+      options: { responsive: true, maintainAspectRatio: true, aspectRatio: 1.2, resizeDelay: 150, plugins: { legend: { position: 'bottom' } } }
+    });
+  };
+
+  // --- Registro de ingreso (QR / Código) ---
+  let qrStream = null;
+  let scanTimer = null;
+  let detector = null;
+
+  const findUserByCode = async (raw) => {
+    const code = String(raw || '').trim().toLowerCase();
+    if (!code) return null;
+    let user = await db.users.where('email').equals(code).first();
+    if (user) return user;
+    const m = code.match(/(?:uid:|ug-)(\d+)/);
+    if (m) {
+      user = await db.users.get(Number(m[1]));
+      if (user) return user;
     }
-  });
+    const arr = await db.users.filter(u => (u.userCode || '').toLowerCase() === code).toArray();
+    return arr[0] || null;
+  };
+
+  const processEntry = async (value, source = 'manual') => {
+    const user = await findUserByCode(value);
+    if (!user) {
+      if (typeof showToast === 'function') showToast('Código no reconocido. Prueba con correo o ID.', 'error', 'Registro');
+      return;
+    }
+    await logAction(user.id, 'entry_registered', `Ingreso por ${source}`);
+    if (typeof showToast === 'function') showToast(`Ingreso registrado: ${user.name}`, 'success', 'Registro');
+    closeEntryModal();
+  };
+
+  const closeEntryModal = () => {
+    try {
+      if (scanTimer) { clearInterval(scanTimer); scanTimer = null; }
+      if (qrStream) { qrStream.getTracks().forEach(t => t.stop()); qrStream = null; }
+    } catch {}
+    const overlay = document.querySelector('.entry-overlay');
+    if (overlay) overlay.remove();
+  };
+
+  const openEntryModal = async () => {
+    const overlay = document.createElement('div');
+    overlay.className = 'entry-overlay';
+    overlay.innerHTML = `
+      <div class="entry-dialog">
+        <div class="entry-header">
+          <h3>Registrar ingreso</h3>
+          <button class="entry-close" aria-label="Cerrar">&times;</button>
+        </div>
+        <div class="entry-tabs">
+          <button class="tab-btn active" data-tab="qr">Escanear QR</button>
+          <button class="tab-btn" data-tab="code">Ingresar código</button>
+        </div>
+        <div id="qr-section" class="entry-section">
+          <video id="qr-video" autoplay playsinline class="qr-video"></video>
+          <p id="qr-status" class="entry-hint">Apunta la cámara al código QR.</p>
+        </div>
+        <div id="code-section" class="entry-section hidden">
+          <div class="entry-row">
+            <input id="entry-code-input" type="text" placeholder="Código o correo" />
+            <button id="entry-code-btn" class="btn">Registrar</button>
+          </div>
+          <p class="entry-hint">Acepta correo, formatos como uid:123 o UG-123.</p>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+
+    const closeBtn = overlay.querySelector('.entry-close');
+    closeBtn.addEventListener('click', closeEntryModal);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) closeEntryModal(); });
+
+    const tabBtns = overlay.querySelectorAll('.tab-btn');
+    const qrSection = overlay.querySelector('#qr-section');
+    const codeSection = overlay.querySelector('#code-section');
+    tabBtns.forEach(btn => btn.addEventListener('click', () => {
+      tabBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const tab = btn.getAttribute('data-tab');
+      if (tab === 'qr') { qrSection.classList.remove('hidden'); codeSection.classList.add('hidden'); }
+      else { codeSection.classList.remove('hidden'); qrSection.classList.add('hidden'); }
+    }));
+
+    const codeBtn = overlay.querySelector('#entry-code-btn');
+    const codeInput = overlay.querySelector('#entry-code-input');
+    codeBtn.addEventListener('click', () => processEntry(codeInput.value, 'manual'));
+
+    const status = overlay.querySelector('#qr-status');
+    const video = overlay.querySelector('#qr-video');
+    try {
+      if ('BarcodeDetector' in window) {
+        detector = new window.BarcodeDetector({ formats: ['qr_code'] });
+      }
+      qrStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      video.srcObject = qrStream;
+      await video.play();
+      if (!detector) {
+        status.textContent = 'Detector QR no soportado en este navegador. Usa el código.';
+        return;
+      }
+      status.textContent = 'Escaneando...';
+      scanTimer = setInterval(async () => {
+        try {
+          const codes = await detector.detect(video);
+          if (codes && codes.length) {
+            processEntry(codes[0].rawValue, 'qr');
+          }
+        } catch (err) {
+          console.warn('Error detectando QR:', err);
+        }
+      }, 500);
+    } catch (err) {
+      status.textContent = 'No se pudo acceder a la cámara. Permisos o dispositivo.';
+    }
+  };
+
+  const initEntryRegister = () => {
+    const card = document.getElementById('kpi-register-entry');
+    if (card) card.addEventListener('click', openEntryModal);
+  };
 
   // Ratios adaptativos según ancho de ventana para evitar que "crezcan" al reducir
   const applyAdaptiveRatios = () => {
@@ -232,13 +423,70 @@ export function mount({ navigate, showToast } = {}) {
       categoriesChart.resize();
     }
   };
-  applyAdaptiveRatios();
+  // Se aplicará tras inicializar gráficos
   window.addEventListener('resize', applyAdaptiveRatios);
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden) {
       applyAdaptiveRatios();
     }
   });
+
+  const initEstadisticasCharts = () => {
+    const usersCanvas = document.getElementById('users-stats-chart');
+    const activityCanvas = document.getElementById('activity-stats-chart');
+    if (!usersCanvas || !activityCanvas) return;
+    new Chart(usersCanvas.getContext('2d'), {
+      type: 'bar',
+      data: { labels: ['Visitantes','Estudiantes','Admins'], datasets: [{ label: 'Activos', data: [120,340,12], backgroundColor: ['#3498db','#2ecc71','#e74c3c'] }] },
+      options: { responsive: true, maintainAspectRatio: true, aspectRatio: 1.6 }
+    });
+    new Chart(activityCanvas.getContext('2d'), {
+      type: 'line',
+      data: { labels: ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'], datasets: [{ label: 'Sesiones', data: [40,55,60,48,70,30,25], borderColor: '#33374c', tension: 0.4 }] },
+      options: { responsive: true, maintainAspectRatio: true, aspectRatio: 1.8 }
+    });
+  };
+
+  const initCalendarTodo = () => {
+    const input = document.getElementById('todo-input');
+    const addBtn = document.getElementById('todo-add');
+    const list = document.getElementById('todo-list');
+    if (!input || !addBtn || !list) return;
+    const STORAGE_KEY = 'adminCalendarTasks';
+    const save = (items) => localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+    const load = () => { try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; } catch { return []; } };
+    const renderItems = (items) => {
+      list.innerHTML = items.map((t, i) => `<li data-index="${i}"><label><input type="checkbox" ${t.done? 'checked':''}> ${t.text}</label> <button class="btn" data-action="del">Eliminar</button></li>`).join('');
+    };
+    let items = load();
+    renderItems(items);
+    addBtn.addEventListener('click', () => {
+      const text = input.value.trim();
+      if (!text) return;
+      items.push({ text, done: false });
+      input.value='';
+      save(items); renderItems(items);
+    });
+    list.addEventListener('click', (e) => {
+      const li = e.target.closest('li'); if (!li) return; const idx = Number(li.getAttribute('data-index'));
+      if (e.target.matches('input[type="checkbox"]')) { items[idx].done = e.target.checked; save(items);} 
+      if (e.target.matches('button[data-action="del"]')) { items.splice(idx,1); save(items); renderItems(items);} 
+    });
+  };
+
+  const renderSection = (key) => {
+    const tplFn = templates[key] || templates.inicio;
+    sectionArea.innerHTML = tplFn();
+    localStorage.setItem('adminLastSection', key);
+    setActive(key);
+    if (key === 'inicio') { initInicioCharts(); applyAdaptiveRatios(); initEntryRegister(); } else { salesChart = null; categoriesChart = null; }
+    if (key === 'estadisticas') initEstadisticasCharts();
+    if (key === 'calendario') initCalendarTodo();
+  };
+
+  const initialSection = localStorage.getItem('adminLastSection') || 'inicio';
+  renderSection(initialSection);
+  navItems.forEach(item => item.addEventListener('click', (e) => { e.preventDefault(); renderSection(item.getAttribute('data-section')); }));
 
   // Sidebar toggle: expand/collapse while remaining fixed
   const sidebar = document.querySelector('.sidebar');

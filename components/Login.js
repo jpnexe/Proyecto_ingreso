@@ -15,7 +15,7 @@ export function render() {
                 <a href="#" class="login-nav-item">Inicio</a>
                 <a href="#" class="login-nav-item">Nosotros</a>
                 <a href="#" class="login-nav-item">Interes</a>
-                <a href="#" class="login-nav-item">Universiadad</a>
+                <a href="#" class="login-nav-item">Universidad</a>
                 <div class="theme-switch">
                     <input type="checkbox" id="theme-toggle">
                     <label for="theme-toggle">

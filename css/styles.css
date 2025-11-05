@@ -34,9 +34,9 @@
 [data-theme="dark"] {
   /* Fondo con degradado suave y acentuación oscura */
   --bg-primary:
-    radial-gradient(circle at 15% 25%, rgba(52, 152, 219, 0.10) 0%, transparent 45%),
-    radial-gradient(circle at 85% 75%, rgba(255, 127, 80, 0.08) 0%, transparent 50%),
-    radial-gradient(circle at 60% 20%, rgba(46, 204, 113, 0.10) 0%, transparent 48%),
+    radial-gradient(circle at 15% 25%, rgba(64, 129, 172, 0.299) 0%, transparent 45%),
+    radial-gradient(circle at 85% 75%, rgba(255, 127, 80, 0.329) 0%, transparent 50%),
+    radial-gradient(circle at 60% 20%, rgba(46, 204, 112, 0.332) 0%, transparent 48%),
     linear-gradient(135deg, #0b1220 0%, #1b1f34 50%, #0a2a2f 100%);
   --bg-container: rgba(20, 24, 34, 0.35);
   --text-primary: #ffffff;
@@ -203,7 +203,7 @@ body {
   padding: 1rem 2rem;
   backdrop-filter: blur(20px);
   position: sticky;
-  border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.2));
+  border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.359));
   top: 0;
   z-index: 1200;
   transition: background 0.3s ease, background-color 0.3s ease;
@@ -822,12 +822,12 @@ body {
   position: absolute;
   top: 100%;
   left: 0;
-  right: 0;
+  right: 0;  background: #d0daecd6;
   background: var(--bg-header, rgba(172, 159, 159, 0.95));
   backdrop-filter: blur(20px);
   border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.3));
   border-top: none;
-  border-radius: 0 0 20px 20px;
+  border-radius: 20px 20px 20px 20px;
   box-shadow: var(--shadow, 0 10px 25px rgba(0, 0, 0, 0.2));
   z-index: 1190;
   flex-direction: column;
