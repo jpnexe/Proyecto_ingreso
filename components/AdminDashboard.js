@@ -65,8 +65,8 @@ export function render() {
             </div>
           </section>
           <section class="charts-grid">
-            <div class="chart-card"><div class="chart-header"><h3>Rendimiento de Ventas</h3><button class="chart-settings"><i class="fas fa-cog"></i></button></div><canvas id="sales-performance-chart"></canvas></div>
-            <div class="chart-card"><div class="chart-header"><h3>Categorías Populares</h3><button class="chart-settings"><i class="fas fa-cog"></i></button></div><canvas id="popular-categories-chart"></canvas></div>
+            <div class="chart-card"><div class="chart-header"><h3>Registros diarios por rol</h3><button class="chart-settings"><i class="fas fa-cog"></i></button></div><canvas id="daily-role-registrations-chart"></canvas></div>
+            <div class="chart-card"><div class="chart-header"><h3>Estudiantes por carrera</h3><button class="chart-settings"><i class="fas fa-cog"></i></button></div><canvas id="career-distribution-chart"></canvas></div>
           </section>
           <section class="recent-customers">
             <div class="recent-customers-header"><h3>Usuarios recientes</h3><button class="chart-settings"><i class="fas fa-cog"></i></button></div>
@@ -122,11 +122,12 @@ export function mount({ currentUser, navigate, showToast } = {}) {
         <div class="kpi-card dark"><div class="kpi-header"><span>Total de usuarios</span><i class="fas fa-users"></i></div><div id="kpi-total-users" class="kpi-value">-</div><div class="kpi-change positive">Actualizado</div></div>
         <div class="kpi-card"><div class="kpi-header"><span>Administradores</span><i class="fas fa-user-shield"></i></div><div id="kpi-admins" class="kpi-value">-</div><div class="kpi-change positive">Actualizado</div></div>
         <div class="kpi-card"><div class="kpi-header"><span>Estudiantes</span><i class="fas fa-user-graduate"></i></div><div id="kpi-estudiantes" class="kpi-value">-</div><div class="kpi-change positive">Actualizado</div></div>
+        <div class="kpi-card"><div class="kpi-header"><span>Visitantes</span><i class="fas fa-user"></i></div><div id="kpi-visitantes" class="kpi-value">-</div><div class="kpi-change positive">Actualizado</div></div>
         <div class="kpi-card clickable" id="kpi-register-entry"><div class="kpi-header"><span>Registrar ingreso</span><i class="fas fa-qrcode"></i></div><div class="kpi-value">QR / Código</div><div class="kpi-change positive">Nuevo</div></div>
       </section>
       <section class="charts-grid">
-        <div class="chart-card"><div class="chart-header"><h3>Rendimiento de Ventas</h3><button class="chart-settings"><i class="fas fa-cog"></i></button></div><canvas id="sales-performance-chart"></canvas></div>
-        <div class="chart-card"><div class="chart-header"><h3>Categorías Populares</h3><button class="chart-settings"><i class="fas fa-cog"></i></button></div><canvas id="popular-categories-chart"></canvas></div>
+        <div class="chart-card"><div class="chart-header"><h3>Registros diarios por rol</h3><button class="chart-settings"><i class="fas fa-cog"></i></button></div><canvas id="daily-role-registrations-chart"></canvas></div>
+        <div class="chart-card"><div class="chart-header"><h3>Estudiantes por carrera</h3><button class="chart-settings"><i class="fas fa-cog"></i></button></div><canvas id="career-distribution-chart"></canvas></div>
       </section>
       <section class="recent-customers">
         <div class="recent-customers-header"><h3>Usuarios recientes</h3><button class="chart-settings"><i class="fas fa-cog"></i></button></div>
@@ -138,6 +139,16 @@ export function mount({ currentUser, navigate, showToast } = {}) {
           </table>
         </div>
         <div class="view-all-container"><a href="#" class="view-all-btn">Ver todos</a></div>
+
+        <div class="daily-registrations">
+          <div class="recent-customers-header"><h3>Registros por día</h3></div>
+          <div class="recent-customers-table">
+            <table>
+              <thead><tr><th>Día</th><th>Registros</th></tr></thead>
+              <tbody id="daily-registrations-body"></tbody>
+            </table>
+          </div>
+        </div>
       </section>
     `,
     reportes: () => `
@@ -298,42 +309,115 @@ export function mount({ currentUser, navigate, showToast } = {}) {
 
   let salesChart = null;
   let categoriesChart = null;
+  let dailyRegsChart = null;
 
-  const initInicioCharts = () => {
-    const salesCanvas = document.getElementById('sales-performance-chart');
-    const categoriesCanvas = document.getElementById('popular-categories-chart');
-    if (!salesCanvas || !categoriesCanvas) return;
-    const salesCtx = salesCanvas.getContext('2d');
-    salesChart = new Chart(salesCtx, {
-      type: 'line',
-      data: {
-        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May'],
-        datasets: [
-          { label: 'Laptops', data: [65,59,80,81,56], borderColor: '#33374c', tension: 0.4, fill: false },
-          { label: 'Headsets', data: [28,48,40,19,86], borderColor: '#a0a0a0', tension: 0.4, fill: false },
-          { label: 'Monitors', data: [18,58,30,69,26], borderColor: '#c0c0c0', tension: 0.4, fill: false },
-          { label: 'Phones', data: [38,28,60,59,76], borderColor: '#e0e0e0', tension: 0.4, fill: false },
-        ],
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: true,
-        aspectRatio: 2.0,
-        resizeDelay: 150,
-        plugins: { legend: { position: 'top', align: 'start' } },
-        scales: { y: { beginAtZero: true } },
-      },
+  const initInicioCharts = async () => {
+    const categoriesCanvas = document.getElementById('career-distribution-chart');
+    const dailyCanvas = document.getElementById('daily-role-registrations-chart');
+    if (!categoriesCanvas) return;
+
+    // Distribución de estudiantes por carrera (dinámico desde BD)
+    const categoriesCtx = categoriesCanvas.getContext('2d');
+    let users = await listUsers();
+    const students = (users || []).filter(u => (u.role || '') === 'estudiante');
+
+    // Carreras solicitadas (solo estas deben aparecer) y colores fijos
+    const preferredCareers = [
+      'Administración de Empresas',
+      'Contaduría Pública',
+      'Trabajo social',
+      'Ingeniería en sistemas',
+      'Licenciatura infantil',
+      'Sin carrera'
+    ];
+    const careerColorsMap = {
+      'Administración de Empresas': '#1abc9c',
+      'Contaduría Pública': '#e67e22',
+      'Trabajo social': '#9b59b6',
+      'Ingeniería en sistemas': '#3498db',
+      'Licenciatura infantil': '#e74c3c',
+      'Sin carrera': '#7f8c8d'
+    };
+
+    // Normalización para emparejar nombres con/ sin acentos y variaciones de mayúsculas
+    const normalize = (s) => (s || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim();
+    const canonicalLookup = {
+      'administracion de empresas': 'Administración de Empresas',
+      'contaduria publica': 'Contaduría Pública',
+      'trabajo social': 'Trabajo social',
+      'ingenieria en sistemas': 'Ingeniería en sistemas',
+      'licenciatura infantil': 'Licenciatura infantil',
+      'sin carrera': 'Sin carrera'
+    };
+    const canonicalizeCareer = (s) => canonicalLookup[normalize(s)] || null;
+
+    // Inicializar contadores solo para las carreras preferidas
+    const counters = new Map(preferredCareers.map(l => [l, 0]));
+    students.forEach(u => {
+      const raw = u.career || '';
+      const canon = canonicalizeCareer(raw);
+      const isEmpty = normalize(raw) === '';
+      const key = canon || (isEmpty ? 'Sin carrera' : null);
+      if (key && counters.has(key)) {
+        counters.set(key, (counters.get(key) || 0) + 1);
+      }
     });
 
-    const categoriesCtx = categoriesCanvas.getContext('2d');
+    // Construir datos únicamente para las carreras indicadas
+    const labels = [...preferredCareers];
+    const data = labels.map(l => counters.get(l) || 0);
+    const colors = labels.map(l => careerColorsMap[l]);
+
     categoriesChart = new Chart(categoriesCtx, {
       type: 'doughnut',
       data: {
-        labels: ['Electronics', 'Furniture', 'Toys'],
-        datasets: [{ label: 'Popular Categories', data: [300,150,100], backgroundColor: ['#33374c','#a0a0a0','#e0e0e0'], borderWidth: 0 }]
+        labels,
+        datasets: [{ label: 'Estudiantes por carrera', data, backgroundColor: colors, borderWidth: 0 }]
       },
       options: { responsive: true, maintainAspectRatio: true, aspectRatio: 1.2, resizeDelay: 150, plugins: { legend: { position: 'bottom' } } }
     });
+
+    // Gráfico de barras: registros diarios por rol (últimos 7 días)
+    if (dailyCanvas) {
+      const dailyCtx = dailyCanvas.getContext('2d');
+      const today = new Date();
+      const days = [];
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date(today);
+        d.setDate(today.getDate() - i);
+        days.push(d);
+      }
+      const dayKey = (d) => new Date(d).toISOString().slice(0, 10);
+      const labelFmt = (d) => d.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
+      const labelsDays = days.map(labelFmt);
+      const users2 = users.filter(u => !!u.createdAt);
+      const countFor = (role, d) => users2.filter(u => (u.role||'') === role && dayKey(u.createdAt) === dayKey(d)).length;
+      const estData = days.map(d => countFor('estudiante', d));
+      const visData = days.map(d => countFor('visitante', d));
+
+      dailyRegsChart = new Chart(dailyCtx, {
+        type: 'bar',
+        data: {
+          labels: labelsDays,
+          datasets: [
+            { label: 'Estudiantes', data: estData, backgroundColor: '#2ecc71' },
+            { label: 'Visitantes', data: visData, backgroundColor: '#3498db' },
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          aspectRatio: 1.6,
+          resizeDelay: 150,
+          scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+          plugins: { legend: { position: 'top', align: 'start' } }
+        }
+      });
+    }
   };
 
   // Datos reales para KPIs y usuarios recientes
@@ -351,7 +435,7 @@ export function mount({ currentUser, navigate, showToast } = {}) {
     if (!tbody) return;
     let users = await listUsers();
     users = (users || []).sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
-    const top = users.slice(0, 5);
+    const top = users.slice(0, 3);
     tbody.innerHTML = top.map(u => `
       <tr>
         <td><div class="user-avatar">${(u.name||'').charAt(0).toUpperCase()}</div></td>
@@ -372,16 +456,37 @@ export function mount({ currentUser, navigate, showToast } = {}) {
     }
   };
 
+  const populateDailyRegistrations = async () => {
+    const tbody = document.getElementById('daily-registrations-body');
+    if (!tbody) return;
+    let users = await listUsers();
+    users = (users || []).filter(u => !!u.createdAt);
+    const byDay = new Map();
+    users.forEach(u => {
+      const key = new Date(u.createdAt).toISOString().slice(0, 10);
+      byDay.set(key, (byDay.get(key) || 0) + 1);
+    });
+    const sorted = Array.from(byDay.entries()).sort((a, b) => new Date(a[0]) - new Date(b[0]));
+    const last7 = sorted.slice(-7);
+    tbody.innerHTML = (last7.length ? last7 : sorted).map(([d, c]) => {
+      const label = new Date(d + 'T00:00:00').toLocaleDateString('es-ES', { weekday: 'short', day: '2-digit', month: 'short' });
+      return `<tr><td>${label}</td><td>${c}</td></tr>`;
+    }).join('') || '<tr><td colspan="2">Sin datos</td></tr>';
+  };
+
   const initInicioData = async () => {
     try {
       const stats = await getUserStats();
       const totalEl = document.getElementById('kpi-total-users');
       const adminsEl = document.getElementById('kpi-admins');
       const estEl = document.getElementById('kpi-estudiantes');
+      const visEl = document.getElementById('kpi-visitantes');
       if (totalEl) totalEl.textContent = String(stats.total || 0);
       if (adminsEl) adminsEl.textContent = String(stats.admins || 0);
       if (estEl) estEl.textContent = String(stats.estudiantes || 0);
+      if (visEl) visEl.textContent = String(stats.visitantes || 0);
       await populateRecentUsers();
+      await populateDailyRegistrations();
     } catch (e) {
       console.error('Error al inicializar KPIs de Inicio:', e);
     }
@@ -511,7 +616,9 @@ export function mount({ currentUser, navigate, showToast } = {}) {
   const applyAdaptiveRatios = () => {
     const w = window.innerWidth;
     const lineRatio = w <= 480 ? 1.2 : (w <= 768 ? 1.6 : 2.0);
-    const doughnutRatio = w <= 480 ? 1.0 : (w <= 768 ? 1.1 : 1.2);
+    // Unificar tamaños y hacerlos más pequeños en pantallas grandes
+    const barRatio = w <= 480 ? 1.6 : (w <= 768 ? 2.0 : 2.4);
+    const doughnutRatio = barRatio;
     if (salesChart) {
       salesChart.options.aspectRatio = lineRatio;
       salesChart.resize();
@@ -519,6 +626,10 @@ export function mount({ currentUser, navigate, showToast } = {}) {
     if (categoriesChart) {
       categoriesChart.options.aspectRatio = doughnutRatio;
       categoriesChart.resize();
+    }
+    if (dailyRegsChart) {
+      dailyRegsChart.options.aspectRatio = barRatio;
+      dailyRegsChart.resize();
     }
   };
   // Se aplicará tras inicializar gráficos
@@ -850,7 +961,7 @@ export function mount({ currentUser, navigate, showToast } = {}) {
       sectionArea.innerHTML = tplFn();
       localStorage.setItem('adminLastSection', key);
       setActive(key);
-      if (key === 'inicio') { initInicioCharts(); initInicioData(); applyAdaptiveRatios(); initEntryRegister(); } else { salesChart = null; categoriesChart = null; }
+      if (key === 'inicio') { initInicioCharts(); initInicioData(); applyAdaptiveRatios(); initEntryRegister(); } else { salesChart = null; categoriesChart = null; dailyRegsChart = null; }
       if (key === 'estadisticas') initEstadisticasCharts();
       if (key === 'calendario') initCalendarTasks();
       if (key === 'usuarios') initUsuariosAdmin();
