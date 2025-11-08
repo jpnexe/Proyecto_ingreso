@@ -1,4 +1,4 @@
-import { logAction, getUserStats, listUsers, updateUser, deleteUser, listReservas, getUserById, getUserByEmail, registerUser } from '../js/db.js';
+import { logAction, getUserStats, listUsers, updateUser, deleteUser, listReservas, getUserById, getUserByEmail, registerUser, getLogs } from '../js/db.js';
 
 export function render() {
   return `
@@ -152,14 +152,35 @@ export function mount({ currentUser, navigate, showToast } = {}) {
       </section>
     `,
     reportes: () => `
-      <section class="reports-section chart-card">
-        <div class="chart-header"><h3>Novedades del sistema</h3></div>
-        <ul>
-          <li>Actualización de seguridad aplicada (v1.2.3).</li>
-          <li>Nuevo módulo de estadísticas integrado.</li>
-          <li>Mejoras de rendimiento en el panel.</li>
-          <li>Correcciones de UI en móviles.</li>
-        </ul>
+      <section class="reports-section chart-card logs-card">
+        <div class="chart-header">
+          <h3>Novedades del sistema</h3>
+          <div class="logs-actions" aria-label="Controles de filtrado de logs">
+            <input type="search" id="logs-search" placeholder="Buscar evento o detalle" />
+            <select id="logs-category">
+              <option value="">Todas las categorías</option>
+              <option value="auth">Autenticación</option>
+              <option value="usuarios">Usuarios</option>
+              <option value="tareas">Tareas</option>
+              <option value="sistema">Sistema</option>
+            </select>
+            <select id="logs-severity">
+              <option value="">Todas las severidades</option>
+              <option value="info">Info</option>
+              <option value="warn">Advertencia</option>
+              <option value="error">Error</option>
+            </select>
+            <input type="date" id="logs-start" title="Fecha inicio" />
+            <input type="date" id="logs-end" title="Fecha fin" />
+            <button id="logs-clear" class="btn btn-sm" title="Limpiar filtros">Limpiar</button>
+          </div>
+        </div>
+        <div class="logs-list-wrap">
+          <ul id="logs-list" class="logs-list" aria-live="polite"></ul>
+        </div>
+        <div class="logs-footer">
+          <div class="logs-summary" id="logs-summary"></div>
+        </div>
       </section>
     `,
     estadisticas: () => `
@@ -1272,6 +1293,7 @@ export function mount({ currentUser, navigate, showToast } = {}) {
       setActive(key);
       if (key === 'inicio') { initInicioCharts(); initInicioData(); applyAdaptiveRatios(); initEntryRegister(); } else { salesChart = null; categoriesChart = null; dailyRegsChart = null; }
       if (key === 'estadisticas') initEstadisticasCharts();
+      if (key === 'reportes') initSystemLogs();
       if (key === 'calendario') initCalendarTasks();
       if (key === 'usuarios') initUsuariosAdmin();
     };
@@ -1377,3 +1399,107 @@ export function mount({ currentUser, navigate, showToast } = {}) {
     });
   }
 }
+  // --- Logs del sistema en "Novedades" ---
+  const initSystemLogs = async () => {
+    const listEl = document.getElementById('logs-list');
+    const sumEl = document.getElementById('logs-summary');
+    const searchEl = document.getElementById('logs-search');
+    const catEl = document.getElementById('logs-category');
+    const sevEl = document.getElementById('logs-severity');
+    const startEl = document.getElementById('logs-start');
+    const endEl = document.getElementById('logs-end');
+    const clearBtn = document.getElementById('logs-clear');
+    if (!listEl || !searchEl || !catEl || !sevEl) return;
+
+    // Obtener logs desde la base de datos
+    let baseLogs = await getLogs({ limit: 200 });
+
+    // Derivar categoría y severidad desde la acción
+    const deriveCategory = (a) => {
+      if (!a) return 'sistema';
+      if (a.includes('login') || a.includes('session')) return 'auth';
+      if (a.includes('user')) return 'usuarios';
+      if (a.includes('task')) return 'tareas';
+      return 'sistema';
+    };
+    const deriveSeverity = (a) => {
+      if (!a) return 'info';
+      if (a.includes('deleted') || a.includes('reset')) return 'warn';
+      if (a.includes('error')) return 'error';
+      return 'info';
+    };
+
+    baseLogs = (baseLogs || []).map(l => ({
+      ...l,
+      category: deriveCategory(String(l.action||'')),
+      severity: deriveSeverity(String(l.action||'')),
+    }));
+
+    const fmtDate = (iso) => {
+      try {
+        const d = new Date(iso);
+        return d.toLocaleString('es-ES', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
+      } catch { return iso; }
+    };
+
+    const sevBadge = (sev) => {
+      if (sev === 'error') return '<span class="sev-badge sev-error">Error</span>';
+      if (sev === 'warn') return '<span class="sev-badge sev-warn">Advertencia</span>';
+      return '<span class="sev-badge sev-info">Info</span>';
+    };
+
+    let query = '';
+    let category = '';
+    let severity = '';
+    let startDate = '';
+    let endDate = '';
+
+    const render = () => {
+      const q = query.toLowerCase();
+      const sTs = startDate ? new Date(startDate).getTime() : null;
+      const eTs = endDate ? new Date(endDate).getTime() : null;
+      const filtered = baseLogs.filter(l => {
+        const t = new Date(l.timestamp).getTime();
+        if (category && l.category !== category) return false;
+        if (severity && l.severity !== severity) return false;
+        if (sTs && t < sTs) return false;
+        if (eTs && t > eTs + 86400000 - 1) return false; // incluir día completo
+        const msg = `${l.action} ${l.details||''}`.toLowerCase();
+        return !q || msg.includes(q);
+      });
+
+      listEl.classList.add('fade');
+      listEl.innerHTML = filtered.map(l => `
+        <li class="log-item ${l.severity}">
+          <div class="log-top">
+            <span class="log-time">${fmtDate(l.timestamp)}</span>
+            <span class="log-cat">${l.category}</span>
+            ${sevBadge(l.severity)}
+          </div>
+          <div class="log-msg">${l.details ? l.details : l.action}</div>
+          ${l.userId ? `<div class="log-meta">usuario: #${l.userId}</div>` : ''}
+        </li>
+      `).join('');
+      sumEl.innerHTML = `${filtered.length} eventos mostrados`;
+      setTimeout(() => listEl.classList.remove('fade'), 140);
+    };
+
+    // Bind filtros
+    searchEl.addEventListener('input', (e) => { query = (e.target.value||'').trim(); render(); });
+    catEl.addEventListener('change', (e) => { category = e.target.value; render(); });
+    sevEl.addEventListener('change', (e) => { severity = e.target.value; render(); });
+    startEl.addEventListener('change', (e) => { startDate = e.target.value; render(); });
+    endEl.addEventListener('change', (e) => { endDate = e.target.value; render(); });
+    if (clearBtn) clearBtn.addEventListener('click', () => {
+      searchEl.value = '';
+      catEl.value = '';
+      sevEl.value = '';
+      startEl.value = '';
+      endEl.value = '';
+      query = category = severity = '';
+      startDate = endDate = '';
+      render();
+    });
+
+    render();
+  };

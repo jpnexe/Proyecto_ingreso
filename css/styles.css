@@ -146,6 +146,9 @@ body {
   transition: background 0.3s ease, color 0.3s ease;
 }
 
+/* Utilitario global para ocultar elementos */
+.hidden { display: none !important; }
+
 .uniguajira-visitors-container {
     background: var(--bg-container, rgba(255, 255, 255, 0.15));
     backdrop-filter: blur(12px);

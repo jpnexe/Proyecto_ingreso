@@ -34,7 +34,18 @@ async function loadSqlJs() {
   // 1) Intentar import dinámico (entornos con bundler)
   try {
     const initSqlJs = (await import('sql.js')).default;
-    SQL = await initSqlJs({ locateFile: (f) => f });
+    // En bundlers (Vite), importar la URL del WASM explícitamente
+    let wasmUrl = null;
+    try {
+      wasmUrl = (await import('sql.js/dist/sql-wasm.wasm?url')).default;
+    } catch (_) {}
+    SQL = await initSqlJs({
+      locateFile: (f) => {
+        if (f.endsWith('.wasm') && wasmUrl) return wasmUrl;
+        // Fallback: dejar el nombre como está (Vite servirá 404 si no existe)
+        return f;
+      }
+    });
     return;
   } catch (_) {}
   // 2) Cargar desde CDN (entorno sin bundler / html plano)

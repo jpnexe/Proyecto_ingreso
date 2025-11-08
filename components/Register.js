@@ -143,6 +143,8 @@ export function mount({ navigate, showToast: showModal }) {
         const isAdmin = userTypeSelect.value === 'admin';
         adminWrap.classList.toggle('hidden', !isAdmin);
     });
+    // Asegurar estado inicial correcto según selección actual
+    userTypeSelect.dispatchEvent(new Event('change'));
     
     // Toggle password visibility para contraseña
     const passwordToggle = document.getElementById('password-toggle');
