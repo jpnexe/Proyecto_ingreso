@@ -27,7 +27,14 @@ export function render() {
             <div class="identity-pill">
               <div class="notifications">
                 <i class="fas fa-bell"></i>
-                <span class="notification-badge">2</span>
+                <span class="notification-badge">0</span>
+                <div class="notifications-popover hidden" role="dialog" aria-label="Novedades recientes">
+                  <div class="notif-header">Novedades recientes</div>
+                  <ul id="notif-preview" class="notif-list"></ul>
+                  <div class="notif-actions">
+                    <button id="notif-open-reportes" class="btn btn-sm" title="Ver todas">Ver todas</button>
+                  </div>
+                </div>
               </div>
               <div class="user-profile">
                 <span class="user-name">Administrador</span>
@@ -115,6 +122,91 @@ export function mount({ currentUser, navigate, showToast } = {}) {
   if (pillNameEl) pillNameEl.textContent = currentUser?.name || 'Administrador';
   if (pillRoleEl) pillRoleEl.textContent = 'Administrador';
   if (pillAvatarEl && currentUser?.name) pillAvatarEl.alt = currentUser.name;
+
+  // Notificaciones: vincular badge al total de logs y vista previa (top 3)
+  const notifWrap = document.querySelector('.notifications');
+  const notifBadgeEl = document.querySelector('.notifications .notification-badge');
+  const notifPopover = document.querySelector('.notifications .notifications-popover');
+  const notifListEl = document.getElementById('notif-preview');
+  const openAllBtn = document.getElementById('notif-open-reportes');
+  const navReportes = document.querySelector('.sidebar-nav .nav-item[data-section="reportes"]');
+
+  const updateNotifCount = async () => {
+    try {
+      const logs = await getLogs();
+      const count = (logs || []).length;
+      if (notifBadgeEl) {
+        notifBadgeEl.textContent = String(count);
+        notifBadgeEl.style.display = count > 0 ? 'inline-block' : 'none';
+      }
+      return logs || [];
+    } catch (e) {
+      console.warn('No se pudo obtener logs para notificaciones:', e);
+      return [];
+    }
+  };
+
+  const deriveCategory = (a) => {
+    if (!a) return 'sistema';
+    if (a.includes('login') || a.includes('session')) return 'auth';
+    if (a.includes('user')) return 'usuarios';
+    if (a.includes('task')) return 'tareas';
+    return 'sistema';
+  };
+  const deriveSeverity = (a) => {
+    if (!a) return 'info';
+    if (a.includes('deleted') || a.includes('reset')) return 'warn';
+    if (a.includes('error')) return 'error';
+    return 'info';
+  };
+  const fmtDateShort = (iso) => {
+    try {
+      const d = new Date(iso);
+      return d.toLocaleString('es-ES', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
+    } catch { return iso; }
+  };
+
+  const renderNotifPreview = (logs) => {
+    if (!notifListEl) return;
+    const top3 = (logs || []).slice(0,3).map(l => ({
+      ...l,
+      category: deriveCategory(String(l.action||'')),
+      severity: deriveSeverity(String(l.action||'')),
+    }));
+    notifListEl.innerHTML = top3.length ? top3.map(l => `
+      <li class="notif-item">
+        <div class="notif-row">
+          <span class="notif-time">${fmtDateShort(l.timestamp)}</span>
+          <span class="notif-cat">${l.category}</span>
+          <span class="notif-sev ${l.severity}">${l.severity}</span>
+        </div>
+        <div class="notif-msg">${l.details ? l.details : l.action}</div>
+      </li>
+    `).join('') : '<li class="notif-empty">No hay novedades</li>';
+  };
+
+  const openPopover = () => { if (notifPopover) notifPopover.classList.remove('hidden'); };
+  const closePopover = () => { if (notifPopover) notifPopover.classList.add('hidden'); };
+
+  if (notifWrap) {
+    notifWrap.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const logs = await updateNotifCount();
+      renderNotifPreview(logs);
+      if (notifPopover?.classList.contains('hidden')) openPopover(); else closePopover();
+    });
+    document.addEventListener('click', (ev) => { if (!notifWrap.contains(ev.target)) closePopover(); });
+  }
+  if (openAllBtn && navReportes) {
+    openAllBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      closePopover();
+      navReportes.click();
+    });
+  }
+
+  // Inicializar contador al montar
+  updateNotifCount();
 
   const templates = {
     inicio: () => `
