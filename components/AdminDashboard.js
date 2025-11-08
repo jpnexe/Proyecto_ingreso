@@ -228,6 +228,11 @@ export function mount({ currentUser, navigate, showToast } = {}) {
       <section class="users-section chart-card">
         <div class="chart-header"><h3>Gestión de usuarios</h3></div>
         <div class="users-actions">
+          <div class="role-tabs">
+            <button class="btn btn-sm role-tab active" data-role="estudiante">Estudiantes</button>
+            <button class="btn btn-sm role-tab" data-role="visitante">Visitantes</button>
+            <button class="btn btn-sm role-tab" data-role="admin">Administradores</button>
+          </div>
           <input type="search" id="user-search" placeholder="Buscar por nombre o correo" />
         </div>
         <div class="users-table-wrap">
@@ -794,6 +799,7 @@ export function mount({ currentUser, navigate, showToast } = {}) {
   const initUsuariosAdmin = () => {
     const tbody = document.getElementById('users-table-body');
     const searchEl = document.getElementById('user-search');
+    const roleTabs = document.querySelectorAll('.role-tab');
     const modal = document.getElementById('user-edit-modal');
     const closeBtn = document.getElementById('user-edit-close');
     const saveBtn = document.getElementById('user-edit-save');
@@ -813,6 +819,7 @@ export function mount({ currentUser, navigate, showToast } = {}) {
 
     let usersCache = [];
     let query = '';
+    let roleFilter = 'estudiante';
 
     const roleLabel = (r) => {
       if (r === 'admin') return 'Administrador';
@@ -843,7 +850,9 @@ export function mount({ currentUser, navigate, showToast } = {}) {
       usersCache = await listUsers();
       const filtered = (usersCache || []).filter(u => {
         const t = query.toLowerCase();
-        return (u.name||'').toLowerCase().includes(t) || (u.email||'').toLowerCase().includes(t);
+        const matchesQuery = (u.name||'').toLowerCase().includes(t) || (u.email||'').toLowerCase().includes(t);
+        const matchesRole = roleFilter ? ((u.role||'') === roleFilter) : true;
+        return matchesQuery && matchesRole;
       });
       tbody.innerHTML = filtered.map(u => `
         <tr data-id="${u.id}">
@@ -949,6 +958,18 @@ export function mount({ currentUser, navigate, showToast } = {}) {
 
     if (searchEl) {
       searchEl.addEventListener('input', (e) => { query = (e.target.value||'').trim(); renderTable(); });
+    }
+
+    // Tabs por rol: Estudiantes / Visitantes / Administradores (inicio en Estudiantes)
+    if (roleTabs && roleTabs.length) {
+      roleTabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+          roleTabs.forEach(t => t.classList.remove('active'));
+          tab.classList.add('active');
+          roleFilter = tab.getAttribute('data-role');
+          renderTable();
+        });
+      });
     }
 
     renderTable();
