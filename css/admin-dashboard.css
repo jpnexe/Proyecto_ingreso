@@ -387,7 +387,7 @@ body {
 .recent-customers-table th,
 .recent-customers-table td {
     padding: 15px;
-    text-align: left;
+    text-align: center;
     border-bottom: 1px solid var(--border-color);
 }
 
@@ -421,6 +421,53 @@ body {
   margin-bottom: 12px;
 }
 
+.users-actions-left { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.users-actions-right { display: flex; align-items: center; gap: 10px; }
+.filters-group { display: flex; align-items: center; gap: 10px; }
+.filters-group select { min-width: 160px; }
+
+/* Filtros específicos para Estudiantes */
+#students-filters {
+  background: var(--glass-bg);
+  border: 1px solid var(--border-color);
+  padding: 8px 10px;
+  border-radius: 12px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
+}
+#students-filters select {
+  background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+  border: 1px solid rgba(255,255,255,0.18);
+  color: var(--text-primary, #ffffff);
+  padding: 8px 10px;
+  border-radius: 10px;
+}
+#students-filters select:focus {
+  outline: none;
+  border-color: rgba(52,152,219,0.6);
+  box-shadow: 0 0 0 2px rgba(52,152,219,0.15);
+}
+
+/* Asegurar contraste en el menú desplegable (Windows/Chrome) */
+#students-filters select option,
+.form-grid select option {
+  color: #0f172a; /* texto oscuro para fondo claro del dropdown nativo */
+  background: #ffffff;
+}
+#students-filters select option:checked,
+.form-grid select option:checked {
+  color: #ffffff;
+  background: #3b82f6; /* azul de selección con texto blanco */
+}
+
+/* Generalizar estilo de selects dentro de Gestión de usuarios (todas las pestañas) */
+.users-section select {
+  background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+  border: 1px solid rgba(255,255,255,0.18);
+  color: var(--text-primary, #ffffff);
+}
+.users-section select option { color: #0f172a; background: #ffffff; }
+.users-section select option:checked { color: #ffffff; background: #3b82f6; }
+
 .role-tabs {
   display: flex;
   gap: 8px;
@@ -441,6 +488,19 @@ body {
   border-color: rgba(255,255,255,0.28);
 }
 
+/* Botón primario coherente con el estilo del dashboard */
+.btn.btn-primary {
+  background: #6c63ff;
+  color: #ffffff;
+  border: none;
+  box-shadow: 0 8px 16px rgba(108, 99, 255, 0.35);
+  transition: transform 0.15s ease, box-shadow 0.2s ease;
+}
+.btn.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 12px 22px rgba(108, 99, 255, 0.45); }
+.btn.btn-primary:active { transform: translateY(0); }
+.btn.btn-primary:focus { outline: none; box-shadow: 0 0 0 2px rgba(108, 99, 255, 0.35); }
+.btn.btn-primary i { margin-right: 6px; }
+
 #user-search {
   width: 280px;
   max-width: 40vw;
@@ -457,6 +517,13 @@ body {
   overflow: hidden;
   border-radius: 12px;
 }
+.users-table-wrap {
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  overflow: hidden;
+  max-height: 420px;
+  overflow-y: auto;
+}
 .users-table thead th {
   font-size: 12px;
   font-weight: 600;
@@ -464,12 +531,52 @@ body {
   background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02));
   border-bottom: 1px solid var(--border-color);
   padding: 10px 12px;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  text-align: center;
 }
 .users-table tbody td {
   padding: 12px;
   border-bottom: 1px solid var(--border-color);
+  vertical-align: middle;
+  text-align: center;
 }
 .users-table tbody tr:hover { background: rgba(255,255,255,0.06); }
+.users-table tbody tr:nth-child(even) { background: rgba(255,255,255,0.03); }
+
+/* Centrar botones en columna Acciones */
+.users-table tbody td:last-child {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+/* Chips para valores (carrera y semestre) */
+.chip {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  line-height: 1;
+  background: var(--glass-bg);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary, #ffffff);
+}
+.chip--career { background: linear-gradient(180deg, rgba(52,152,219,0.18), rgba(52,152,219,0.08)); border-color: rgba(52,152,219,0.35); }
+.chip--semester { background: linear-gradient(180deg, rgba(46,204,113,0.18), rgba(46,204,113,0.08)); border-color: rgba(46,204,113,0.35); }
+/* Chips adicionales para visitantes y administradores */
+.chip--reason { background: linear-gradient(180deg, rgba(231,126,34,0.18), rgba(231,126,34,0.08)); border-color: rgba(231,126,34,0.35); }
+.chip--status-active { background: linear-gradient(180deg, rgba(46,204,113,0.20), rgba(46,204,113,0.10)); border-color: rgba(46,204,113,0.40); }
+.chip--status-inactive { background: linear-gradient(180deg, rgba(231,76,60,0.20), rgba(231,76,60,0.10)); border-color: rgba(231,76,60,0.40); }
+
+/* Modos por rol para la tabla (por si se requiere ajustes futuros) */
+.users-table.students-view thead th:nth-child(5),
+.users-table.students-view thead th:nth-child(6) {
+  color: #ffffff;
+}
 
 .btn.btn-sm { padding: 6px 10px; border-radius: 8px; }
 .btn.btn-danger.btn-sm { padding: 6px 10px; border-radius: 8px; }
@@ -774,6 +881,12 @@ body {
 .detail-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 10px; }
 
 .btn.btn-danger { background: #e53935; color: #fff; border: none; }
+
+/* Mensajes: centrar columnas en tabla */
+.messages-section table th,
+.messages-section table td {
+  text-align: center;
+}
 
 @media (max-width: 768px) {
   .calendar-section .calendar-board { grid-template-columns: 1fr; }

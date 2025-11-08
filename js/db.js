@@ -16,23 +16,36 @@ db.version(1).stores({
 let SQL = null;
 let sqliteDb = null;
 let sqliteReady = false;
+const USE_SQLITE = true; // Activar SQLite como capa de almacenamiento principal
 
-// Cargar sql.js vía npm o CDN
+// Cargar sql.js vía npm o CDN de forma robusta
+function injectScript(src) {
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = src;
+    s.async = true;
+    s.onload = () => resolve(true);
+    s.onerror = () => reject(new Error('No se pudo cargar ' + src));
+    document.head.appendChild(s);
+  });
+}
 async function loadSqlJs() {
+  if (SQL) return;
+  // 1) Intentar import dinámico (entornos con bundler)
   try {
     const initSqlJs = (await import('sql.js')).default;
-    SQL = await initSqlJs({
-      // En Vite no hace falta locateFile si se resuelve el asset
-      locateFile: (file) => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.6.2/${file}`
-    });
+    SQL = await initSqlJs({ locateFile: (f) => f });
+    return;
+  } catch (_) {}
+  // 2) Cargar desde CDN (entorno sin bundler / html plano)
+  const CDN_BASE = 'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0';
+  try {
+    await injectScript(`${CDN_BASE}/sql-wasm.js`);
+    if (!window.initSqlJs) throw new Error('window.initSqlJs no disponible tras cargar CDN');
+    SQL = await window.initSqlJs({ locateFile: (f) => `${CDN_BASE}/${f}` });
   } catch (e) {
-    if (window.initSqlJs) {
-      SQL = await window.initSqlJs({
-        locateFile: (file) => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.6.2/${file}`
-      });
-    } else {
-      throw new Error('sql.js no disponible. Instala con npm i sql.js o añade CDN.');
-    }
+    console.error('Fallo al cargar sql.js:', e);
+    throw new Error('sql.js no disponible (intenté import y CDN).');
   }
 }
 
@@ -153,13 +166,75 @@ function scalar(sql, params = []) {
 }
 async function ensureSQLite() {
   if (!sqliteReady) await openSQLite();
+  // Garantizar columnas opcionales inmediatamente después de abrir la BD
+  ensureOptionalUserColumns();
 }
 
-// --- Hash de contraseña (reutilizamos si ya existe) ---
+// --- Helpers de migración de columnas ---
+function hasColumn(table, column) {
+  const info = all(`PRAGMA table_info(${table})`);
+  return info.some(r => r.name === column);
+}
+function addColumnIfMissing(table, column, definition) {
+  try {
+    if (!hasColumn(table, column)) run(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+  } catch (e) {
+    console.warn('No se pudo añadir columna', table, column, e);
+  }
+}
+
+// Asegurar columnas opcionales en users (llamar esto ANTES de hacer queries que las usen)
+function ensureOptionalUserColumns() {
+  try {
+    addColumnIfMissing('users', 'career', 'TEXT');
+    addColumnIfMissing('users', 'semester', 'TEXT');
+    addColumnIfMissing('users', 'status', "TEXT DEFAULT 'activo'");
+    addColumnIfMissing('users', 'last_login', 'INTEGER');
+    addColumnIfMissing('users', 'visit_reason', 'TEXT');
+    addColumnIfMissing('users', 'user_code', 'TEXT');
+  } catch (e) {
+    console.warn('No se pudieron asegurar columnas opcionales:', e);
+  }
+}
+
+// Eliminamos el IIFE y aseguramos columnas explícitamente en ensureSQLite/initDB
+
+// --- Cargador liviano para js-sha256 (fallback en contextos no seguros) ---
+async function loadSha256Lib() {
+  if (window.sha256) return;
+  try {
+    await injectScript('https://cdn.jsdelivr.net/npm/js-sha256@0.9.0/build/sha256.min.js');
+  } catch (e) {
+    console.warn('No se pudo cargar js-sha256 desde CDN:', e);
+  }
+}
+
+// --- Hash de contraseña (uso crypto.subtle si está disponible, si no fallback a js-sha256) ---
 async function hashPassword(password) {
-  const msgUint8 = new TextEncoder().encode(password);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
-  return [...new Uint8Array(hashBuffer)].map(b => b.toString(16).padStart(2, '0')).join('');
+  const msg = String(password || '');
+  // Intento con WebCrypto si está disponible
+  try {
+    if (window.crypto && window.crypto.subtle && typeof window.crypto.subtle.digest === 'function') {
+      const msgUint8 = new TextEncoder().encode(msg);
+      const hashBuffer = await window.crypto.subtle.digest('SHA-256', msgUint8);
+      return [...new Uint8Array(hashBuffer)].map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+  } catch (e) {
+    console.warn('Fallo usando crypto.subtle, usaré fallback js-sha256:', e);
+  }
+  // Fallback a js-sha256
+  await loadSha256Lib();
+  if (window.sha256) {
+    return window.sha256(msg);
+  }
+  // Si no está disponible ninguna, retorno un hash simple (no seguro) para mantener funcionalidad en dev
+  console.warn('Usando fallback no seguro de hash por ausencia de WebCrypto y js-sha256.');
+  let hash = 0;
+  for (let i = 0; i < msg.length; i++) {
+    hash = ((hash << 5) - hash) + msg.charCodeAt(i);
+    hash |= 0; // 32-bit
+  }
+  return ('00000000' + (hash >>> 0).toString(16)).slice(-8);
 }
 
 // --- Semilla inicial si BD está vacía ---
@@ -167,210 +242,182 @@ async function seedIfEmpty() {
   const count = scalar('SELECT COUNT(*) as c FROM users');
   if (count > 0) return;
   const demo = [
-    { name: 'Admin', email: 'admin@uni.com', role: 'admin', password: 'admin123' },
-    { name: 'María García Rodríguez', email: 'estudiante@uni.com', role: 'estudiante', password: '123456' },
-    { name: 'Carlos López Martínez', email: 'visitante@uni.com', role: 'visitante', password: '123456' },
+    { name: 'Admin', email: 'admin@uni.com', role: 'admin', password: 'admin123', status: 'activo' },
+    { name: 'María García Rodríguez', email: 'estudiante@uni.com', role: 'estudiante', password: '123456', status: 'activo', career: 'Ingeniería en sistemas', semester: '3' },
+    { name: 'Carlos López Martínez', email: 'visitante@uni.com', role: 'visitante', password: '123456', status: 'activo' },
   ];
   for (const u of demo) {
     const hashed = await hashPassword(u.password);
     run(
-      'INSERT INTO users (name, email, role, password, created_at) VALUES (?,?,?,?,?)',
-      [u.name, u.email, u.role, hashed, Date.now()]
+      'INSERT INTO users (name, email, role, password, created_at, status, career, semester, visit_reason) VALUES (?,?,?,?,?,?,?,?,?)',
+      [u.name, u.email, u.role, hashed, Date.now(), u.status || 'activo', u.career || '', u.semester || '', '']
     );
   }
+  // Semilla de anuncios
+  run('INSERT INTO announcements (title, body, created_at, author_id) VALUES (?,?,?,?)', [
+    'Inicio de semestre',
+    'El semestre académico inicia el próximo lunes. Consulta tu horario.',
+    Date.now(),
+    null
+  ]);
+  run('INSERT INTO announcements (title, body, created_at, author_id) VALUES (?,?,?,?)', [
+    'Actualización de biblioteca',
+    'Nueva sala de estudio y préstamo de portátiles disponible.',
+    Date.now(),
+    null
+  ]);
   await saveSQLite();
 }
 
 // --- Adaptación de initDB para usar SQLite ---
 export async function initDB() {
-  const hasUsers = await db.users.count();
-  if (hasUsers === 0) {
-    // Sembrar admin por defecto y anuncios
-    await registerUser({
-      name: 'Admin',
-      email: 'admin@uni.com',
-      password: 'admin123',
-      role: 'admin',
-      adminCode: 'ADMIN2025',
-      status: 'activo',
-      createdAt: new Date().toISOString(),
-      lastLogin: new Date().toISOString(),
-    });
-    
-    // Agregar usuario de prueba para estudiantes
-    await registerUser({
-      name: 'María García Rodríguez',
-      email: 'estudiante@uni.com',
-      password: '123456',
-      role: 'estudiante',
-      career: 'ingenieria',
-      semester: '3',
-      status: 'activo',
-      createdAt: new Date().toISOString(),
-      lastLogin: new Date().toISOString(),
-    });
-    
-    // Agregar más estudiantes de prueba
-    await registerUser({
-      name: 'Juan Pérez Silva',
-      email: 'juan.perez@uni.com',
-      password: '123456',
-      role: 'estudiante',
-      career: 'medicina',
-      semester: '5',
-      status: 'activo',
-      createdAt: new Date().toISOString(),
-      lastLogin: new Date(Date.now() - 86400000).toISOString(), // Ayer
-    });
-    
-    await registerUser({
-      name: 'Ana Martínez López',
-      email: 'ana.martinez@uni.com',
-      password: '123456',
-      role: 'estudiante',
-      career: 'derecho',
-      semester: '2',
-      status: 'inactivo',
-      createdAt: new Date().toISOString(),
-      lastLogin: new Date(Date.now() - 172800000).toISOString(), // Hace 2 días
-    });
-    
-    // Agregar usuario de prueba para visitantes
-    await registerUser({
-      name: 'Carlos López Martínez',
-      email: 'visitante@uni.com',
-      password: '123456',
-      role: 'visitante',
-      status: 'activo',
-      createdAt: new Date().toISOString(),
-      lastLogin: new Date().toISOString(),
-    });
-    
-    // Más visitantes de prueba
-    await registerUser({
-      name: 'Laura Rodríguez Gómez',
-      email: 'laura.rodriguez@gmail.com',
-      password: '123456',
-      role: 'visitante',
-      status: 'activo',
-      createdAt: new Date().toISOString(),
-      lastLogin: new Date(Date.now() - 43200000).toISOString(), // Hace 12 horas
-    });
-    
-    await db.announcements.bulkAdd([
-      {
-        title: 'Inicio de semestre',
-        body: 'El semestre académico inicia el próximo lunes. Consulta tu horario.',
-        createdAt: new Date().toISOString(),
-      },
-      {
-        title: 'Actualización de biblioteca',
-        body: 'Nueva sala de estudio y préstamo de portátiles disponible.',
-        createdAt: new Date().toISOString(),
-      },
-      {
-        title: 'Semana de bienestar',
-        body: 'Jornadas deportivas y de salud durante toda la semana.',
-        createdAt: new Date().toISOString(),
-      },
-      {
-        title: 'Inscripciones abiertas',
-        body: 'Las inscripciones para el próximo semestre están disponibles hasta el 15 de diciembre.',
-        createdAt: new Date().toISOString(),
-      },
-      {
-        title: 'Conferencia de Ingeniería',
-        body: 'Gran conferencia sobre nuevas tecnologías en ingeniería. Auditorio principal, 2:00 PM.',
-        createdAt: new Date().toISOString(),
-      },
-    ]);
+  try {
+    await ensureSQLite();
+    await seedIfEmpty();
+  } catch (e) {
+    console.error('Fallo al inicializar SQLite. La app continuará (Dexie aún está disponible vía db).', e);
   }
 }
 
 export async function registerUser({ name, email, password, role, adminCode, career, semester, status }) {
+  await ensureSQLite();
   email = String(email || '').trim().toLowerCase();
   name = String(name || '').trim();
   role = String(role || '').trim();
-  if (!name || !email || !password || !role) {
-    throw new Error('Completa todos los campos.');
-  }
-  if (role === 'admin' && adminCode !== 'ADMIN2025') {
-    throw new Error('Código de administrador inválido.');
-  }
-  const exists = await db.users.where('email').equals(email).first();
+  if (!name || !email || !password || !role) throw new Error('Completa todos los campos.');
+  if (role === 'admin' && adminCode !== 'ADMIN2025') throw new Error('Código de administrador inválido.');
+  const exists = all('SELECT id FROM users WHERE LOWER(email)=LOWER(?) LIMIT 1', [email])[0];
   if (exists) throw new Error('Ya existe un usuario con ese correo.');
   const hashed = await hashPassword(password);
-  
-  const userData = { 
-    name, 
-    email, 
-    password: hashed, 
-    role,
-    status: status || 'activo',
-    createdAt: new Date().toISOString(),
-    lastLogin: null
-  };
-  
-  // Agregar campos específicos para estudiantes
-  if (role === 'estudiante') {
-    userData.career = career || '';
-    userData.semester = semester || '';
-  }
-  
-  const id = await db.users.add(userData);
-  
-  // Registrar log de creación
+  run(
+    'INSERT INTO users (name, email, role, password, created_at, status, career, semester, visit_reason) VALUES (?,?,?,?,?,?,?,?,?)',
+    [name, email, role, hashed, Date.now(), status || 'activo', role === 'estudiante' ? (career || '') : '', role === 'estudiante' ? (semester || '') : '', '']
+  );
+  await saveSQLite();
+  const id = scalar('SELECT last_insert_rowid() as id');
   await logAction(id, 'user_created', `Usuario ${role} creado: ${name}`);
-  
   window.dispatchEvent(new CustomEvent('dbchange', { detail: { type: 'users', id } }));
   return id;
 }
 
-export async function authenticateUser(email, password) {
+export async function getUserByEmail(email) {
+  await ensureSQLite();
   email = String(email || '').trim().toLowerCase();
-  const user = await db.users.where('email').equals(email).first();
-  if (!user) throw new Error('Usuario no encontrado.');
+  const rows = all('SELECT id, name, email, role, career, semester, status, visit_reason, created_at, last_login FROM users WHERE LOWER(email)=LOWER(?) LIMIT 1', [email]);
+  const r = rows[0];
+  if (!r) return null;
+  return {
+    id: r.id,
+    name: r.name,
+    email: r.email,
+    role: r.role,
+    career: r.career || '',
+    semester: r.semester || '',
+    status: r.status || 'activo',
+    visitReason: r.visit_reason || '',
+    createdAt: new Date(r.created_at).toISOString(),
+    lastLogin: r.last_login ? new Date(r.last_login).toISOString() : null,
+  };
+}
+
+export async function getUserById(id) {
+  await ensureSQLite();
+  const rows = all('SELECT id, name, email, role, career, semester, status, visit_reason, created_at, last_login FROM users WHERE id=? LIMIT 1', [id]);
+  const r = rows[0];
+  if (!r) return null;
+  return {
+    id: r.id,
+    name: r.name,
+    email: r.email,
+    role: r.role,
+    career: r.career || '',
+    semester: r.semester || '',
+    status: r.status || 'activo',
+    visitReason: r.visit_reason || '',
+    createdAt: new Date(r.created_at).toISOString(),
+    lastLogin: r.last_login ? new Date(r.last_login).toISOString() : null,
+  };
+}
+
+export async function authenticateUser(email, password) {
+  await ensureSQLite();
+  email = String(email || '').trim().toLowerCase();
+  const rows = all('SELECT id, name, email, role, password, career, semester, status, visit_reason, created_at, last_login FROM users WHERE LOWER(email)=LOWER(?) LIMIT 1', [email]);
+  const r = rows[0];
+  if (!r) throw new Error('Usuario no encontrado.');
   const hashed = await hashPassword(password || '');
-  if (user.password !== hashed) throw new Error('Contraseña incorrecta.');
-  
-  // Actualizar último login
-  await db.users.update(user.id, { lastLogin: new Date().toISOString() });
-  
-  // Registrar log de login
-  await logAction(user.id, 'user_login', `Login exitoso para ${user.name}`);
-  
-  return { ...user, lastLogin: new Date().toISOString() };
+  if (r.password !== hashed) throw new Error('Contraseña incorrecta.');
+  run('UPDATE users SET last_login=? WHERE id=?', [Date.now(), r.id]);
+  await saveSQLite();
+  await logAction(r.id, 'user_login', `Login exitoso para ${r.name}`);
+  return {
+    id: r.id,
+    name: r.name,
+    email: r.email,
+    role: r.role,
+    career: r.career || '',
+    semester: r.semester || '',
+    status: r.status || 'activo',
+    visitReason: r.visit_reason || '',
+    createdAt: new Date(r.created_at).toISOString(),
+    lastLogin: new Date().toISOString(),
+  };
 }
 
 export async function listUsers() {
-  return db.users.toArray();
+  await ensureSQLite();
+  const rows = all('SELECT id, name, email, role, career, semester, status, visit_reason, created_at, last_login FROM users ORDER BY id ASC');
+  return rows.map(r => ({
+    id: r.id,
+    name: r.name,
+    email: r.email,
+    role: r.role,
+    career: r.career || '',
+    semester: r.semester || '',
+    status: r.status || 'activo',
+    visitReason: r.visit_reason || '',
+    createdAt: new Date(r.created_at).toISOString(),
+    lastLogin: r.last_login ? new Date(r.last_login).toISOString() : null,
+  }));
 }
 
 export async function updateUser(id, data) {
+  await ensureSQLite();
   if (!id) throw new Error('ID de usuario requerido');
-  const allowed = ['name', 'email', 'role', 'password', 'career', 'semester', 'status'];
-  const update = {};
-  for (const k of allowed) if (data[k] !== undefined) update[k] = data[k];
-  if (update.password && update.password.length < 60) {
-    // Si viene plano, hashearlo
-    update.password = await hashPassword(update.password);
+  const map = {
+    name: 'name',
+    email: 'email',
+    role: 'role',
+    password: 'password',
+    career: 'career',
+    semester: 'semester',
+    status: 'status',
+    visitReason: 'visit_reason'
+  };
+  const sets = [];
+  const params = [];
+  for (const k of Object.keys(map)) {
+    if (data[k] !== undefined) {
+      let val = data[k];
+      if (k === 'password' && val && String(val).length < 60) val = await hashPassword(val);
+      sets.push(`${map[k]} = ?`);
+      params.push(val);
+    }
   }
-  
-  const oldUser = await db.users.get(id);
-  await db.users.update(id, update);
-  
-  // Registrar log de actualización
-  const changes = Object.keys(update).filter(k => k !== 'password').join(', ');
+  if (sets.length === 0) return;
+  run(`UPDATE users SET ${sets.join(', ')} WHERE id = ?`, [...params, id]);
+  await saveSQLite();
+  const changes = Object.keys(data).filter(k => k !== 'password').join(', ');
   await logAction(id, 'user_updated', `Usuario actualizado. Campos: ${changes}`);
-  
   window.dispatchEvent(new CustomEvent('dbchange', { detail: { type: 'users', id } }));
 }
 
 export async function getUserStats() {
-  const total = await db.users.count();
-  const admins = await db.users.where('role').equals('admin').count();
-  const estudiantes = await db.users.where('role').equals('estudiante').count();
-  const visitantes = await db.users.where('role').equals('visitante').count();
+  await ensureSQLite();
+  const total = scalar('SELECT COUNT(*) as c FROM users');
+  const admins = scalar(`SELECT COUNT(*) as c FROM users WHERE role='admin'`);
+  const estudiantes = scalar(`SELECT COUNT(*) as c FROM users WHERE role='estudiante'`);
+  const visitantes = scalar(`SELECT COUNT(*) as c FROM users WHERE role='visitante'`);
   return { total, admins, estudiantes, visitantes };
 }
 
@@ -380,40 +427,62 @@ export function dayNameFromISO(iso) {
 }
 
 export async function createReserva({ userId, dateISO, motivo }) {
+  await ensureSQLite();
   if (!userId || !dateISO || !motivo) throw new Error('Datos de reserva incompletos');
-  const existing = await db.reservas.where('date').equals(dateISO).first();
-  if (existing) throw new Error('Horario no disponible, elige otro.');
-  const id = await db.reservas.add({
+  const exists = all('SELECT id FROM reservas WHERE date=? LIMIT 1', [dateISO])[0];
+  if (exists) throw new Error('Horario no disponible, elige otro.');
+  run('INSERT INTO reservas (user_id, date, day, motivo, status, created_at) VALUES (?,?,?,?,?,?)', [
     userId,
-    date: dateISO,
-    day: dayNameFromISO(dateISO),
+    dateISO,
+    dayNameFromISO(dateISO),
     motivo,
-    createdAt: new Date().toISOString(),
-  });
+    'pendiente',
+    Date.now()
+  ]);
+  await saveSQLite();
+  const id = scalar('SELECT last_insert_rowid() as id');
   window.dispatchEvent(new CustomEvent('dbchange', { detail: { type: 'reservas', id } }));
   return id;
 }
 
 export async function listReservas(userId) {
+  await ensureSQLite();
   if (!userId) return [];
-  const arr = await db.reservas.where('userId').equals(userId).toArray();
-  arr.sort((a, b) => new Date(a.date) - new Date(b.date));
-  return arr;
+  const rows = all('SELECT id, user_id, date, day, motivo, status, created_at FROM reservas WHERE user_id=? ORDER BY date ASC', [userId]);
+  return rows.map(r => ({
+    id: r.id,
+    userId: r.user_id,
+    date: r.date,
+    day: r.day,
+    motivo: r.motivo,
+    status: r.status || 'pendiente',
+    createdAt: new Date(r.created_at).toISOString(),
+  }));
 }
 
 export async function listAnnouncements() {
-  return db.announcements.toArray();
+  await ensureSQLite();
+  const rows = all('SELECT id, title, body, created_at, author_id FROM announcements ORDER BY created_at DESC');
+  return rows.map(r => ({
+    id: r.id,
+    title: r.title,
+    body: r.body,
+    createdAt: new Date(r.created_at).toISOString(),
+    authorId: r.author_id || null,
+  }));
 }
 
 // Función para registrar logs de acciones
 export async function logAction(userId, action, details) {
   try {
-    await db.logs.add({
-      userId,
+    await ensureSQLite();
+    run('INSERT INTO logs (user_id, action, meta, timestamp) VALUES (?,?,?,?)', [
+      userId || null,
       action,
-      details,
-      timestamp: new Date().toISOString()
-    });
+      details || '',
+      Date.now()
+    ]);
+    await saveSQLite();
   } catch (error) {
     console.error('Error al registrar log:', error);
   }
@@ -421,126 +490,99 @@ export async function logAction(userId, action, details) {
 
 // Función para obtener logs con filtros
 export async function getLogs(filters = {}) {
-  let query = db.logs.orderBy('timestamp').reverse();
-  
-  if (filters.userId) {
-    query = query.filter(log => log.userId === filters.userId);
-  }
-  
-  if (filters.action) {
-    query = query.filter(log => log.action === filters.action);
-  }
-  
-  if (filters.limit) {
-    return query.limit(filters.limit).toArray();
-  }
-  
-  return query.toArray();
+  await ensureSQLite();
+  let sql = 'SELECT id, user_id, action, meta, timestamp FROM logs';
+  const conds = [];
+  const params = [];
+  if (filters.userId) { conds.push('user_id = ?'); params.push(filters.userId); }
+  if (filters.action) { conds.push('action = ?'); params.push(filters.action); }
+  if (conds.length) sql += ' WHERE ' + conds.join(' AND ');
+  sql += ' ORDER BY timestamp DESC';
+  if (filters.limit) sql += ` LIMIT ${Number(filters.limit)}`;
+  const rows = all(sql, params);
+  return rows.map(r => ({ id: r.id, userId: r.user_id, action: r.action, details: r.meta, timestamp: new Date(r.timestamp).toISOString() }));
 }
 
 // Función para obtener estadísticas detalladas
 export async function getDetailedStats() {
-  const total = await db.users.count();
-  const admins = await db.users.where('role').equals('admin').count();
-  const estudiantes = await db.users.where('role').equals('estudiante').count();
-  const visitantes = await db.users.where('role').equals('visitante').count();
-  
-  // Estadísticas de estudiantes
-  const estudiantesActivos = await db.users.where('role').equals('estudiante').and(user => user.status === 'activo').count();
-  const estudiantesInactivos = await db.users.where('role').equals('estudiante').and(user => user.status === 'inactivo').count();
-  
-  // Estadísticas de visitantes
-  const visitantesActivos = await db.users.where('role').equals('visitante').and(user => user.status === 'activo').count();
-  
-  // Estadísticas de administradores
-  const adminsActivos = await db.users.where('role').equals('admin').and(user => user.status === 'activo').count();
-  
-  // Últimos logins (últimas 24 horas)
-  const yesterday = new Date(Date.now() - 86400000).toISOString();
-  const recentLogins = await db.users.filter(user => user.lastLogin && user.lastLogin > yesterday).count();
-  
-  return {
-    total,
-    admins,
-    estudiantes,
-    visitantes,
-    estudiantesActivos,
-    estudiantesInactivos,
-    visitantesActivos,
-    adminsActivos,
-    recentLogins
-  };
+  await ensureSQLite();
+  const total = scalar('SELECT COUNT(*) as c FROM users');
+  const admins = scalar(`SELECT COUNT(*) as c FROM users WHERE role='admin'`);
+  const estudiantes = scalar(`SELECT COUNT(*) as c FROM users WHERE role='estudiante'`);
+  const visitantes = scalar(`SELECT COUNT(*) as c FROM users WHERE role='visitante'`);
+  const estudiantesActivos = scalar(`SELECT COUNT(*) as c FROM users WHERE role='estudiante' AND status='activo'`);
+  const estudiantesInactivos = scalar(`SELECT COUNT(*) as c FROM users WHERE role='estudiante' AND status='inactivo'`);
+  const visitantesActivos = scalar(`SELECT COUNT(*) as c FROM users WHERE role='visitante' AND status='activo'`);
+  const adminsActivos = scalar(`SELECT COUNT(*) as c FROM users WHERE role='admin' AND status='activo'`);
+  const yesterday = Date.now() - 86400000;
+  const recentLogins = scalar(`SELECT COUNT(*) as c FROM users WHERE last_login IS NOT NULL AND last_login > ?`, [yesterday]);
+  return { total, admins, estudiantes, visitantes, estudiantesActivos, estudiantesInactivos, visitantesActivos, adminsActivos, recentLogins };
 }
 
 // Función para obtener usuarios por rol con filtros
 export async function getUsersByRole(role, filters = {}) {
-  let query = db.users.where('role').equals(role);
-  
-  if (filters.status) {
-    query = query.filter(user => user.status === filters.status);
-  }
-  
-  if (filters.career && role === 'estudiante') {
-    query = query.filter(user => user.career === filters.career);
-  }
-  
-  if (filters.semester && role === 'estudiante') {
-    query = query.filter(user => user.semester === filters.semester);
-  }
-  
-  return query.toArray();
+  await ensureSQLite();
+  const conds = ['role = ?'];
+  const params = [role];
+  if (filters.status) { conds.push('status = ?'); params.push(filters.status); }
+  if (filters.career && role === 'estudiante') { conds.push('career = ?'); params.push(filters.career); }
+  if (filters.semester && role === 'estudiante') { conds.push('semester = ?'); params.push(filters.semester); }
+  const rows = all(`SELECT id, name, email, role, career, semester, status, visit_reason, created_at, last_login FROM users WHERE ${conds.join(' AND ')} ORDER BY id ASC`, params);
+  return rows.map(r => ({ id: r.id, name: r.name, email: r.email, role: r.role, career: r.career || '', semester: r.semester || '', status: r.status || 'activo', visitReason: r.visit_reason || '', createdAt: new Date(r.created_at).toISOString(), lastLogin: r.last_login ? new Date(r.last_login).toISOString() : null }));
 }
 
 // Función para eliminar usuario (con logs)
 export async function deleteUser(id) {
-  const user = await db.users.get(id);
+  await ensureSQLite();
+  const user = all('SELECT id, name, role FROM users WHERE id=?', [id])[0];
   if (!user) throw new Error('Usuario no encontrado');
-  
-  await db.users.delete(id);
+  run('DELETE FROM users WHERE id=?', [id]);
+  await saveSQLite();
   await logAction(id, 'user_deleted', `Usuario eliminado: ${user.name} (${user.role})`);
-  
   window.dispatchEvent(new CustomEvent('dbchange', { detail: { type: 'users', id } }));
 }
 
 // Función para crear sesión
 export async function createSession(userId) {
-  const sessionId = crypto.randomUUID();
-  const id = await db.sessions.add({
-    userId,
-    sessionId,
-    createdAt: new Date().toISOString(),
-    lastActivity: new Date().toISOString()
-  });
-  
-  return { id, sessionId };
+  await ensureSQLite();
+  const token = crypto.randomUUID();
+  run('INSERT INTO sessions (user_id, token, created_at, active) VALUES (?,?,?,1)', [userId, token, Date.now()]);
+  await saveSQLite();
+  const id = scalar('SELECT last_insert_rowid() as id');
+  return { id, sessionId: token };
 }
 
 // Función para validar sesión
 export async function validateSession(sessionId) {
-  const session = await db.sessions.where('sessionId').equals(sessionId).first();
-  if (!session) return null;
-  
-  // Actualizar última actividad
-  await db.sessions.update(session.id, { lastActivity: new Date().toISOString() });
-  
-  return session;
+  await ensureSQLite();
+  const rows = all('SELECT id, user_id, token, created_at, active FROM sessions WHERE token=? AND active=1 LIMIT 1', [sessionId]);
+  const r = rows[0];
+  if (!r) return null;
+  return { id: r.id, userId: r.user_id, sessionId: r.token, createdAt: new Date(r.created_at).toISOString(), active: !!r.active };
 }
 
 // Función para cerrar sesión
 export async function closeSession(sessionId) {
-  const session = await db.sessions.where('sessionId').equals(sessionId).first();
-  if (session) {
-    await db.sessions.delete(session.id);
-    await logAction(session.userId, 'session_closed', 'Sesión cerrada');
+  await ensureSQLite();
+  const s = all('SELECT id, user_id FROM sessions WHERE token=? LIMIT 1', [sessionId])[0];
+  if (s) {
+    run('UPDATE sessions SET active=0 WHERE id=?', [s.id]);
+    await saveSQLite();
+    await logAction(s.user_id, 'session_closed', 'Sesión cerrada');
   }
 }
 
 // Función para resetear la base de datos (solo para desarrollo)
 export async function resetDatabase() {
-  await db.users.clear();
-  await db.reservas.clear();
-  await db.announcements.clear();
-  await db.logs.clear();
-  await db.sessions.clear();
-  await initDB();
+  await ensureSQLite();
+  sqliteDb.exec(`
+    DELETE FROM users;
+    DELETE FROM reservas;
+    DELETE FROM announcements;
+    DELETE FROM logs;
+    DELETE FROM sessions;
+  `);
+  await saveSQLite();
+  await seedIfEmpty();
+  window.dispatchEvent(new CustomEvent('dbchange', { detail: { type: 'reset' } }));
 }

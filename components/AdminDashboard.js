@@ -1,4 +1,4 @@
-import { db, logAction, getUserStats, listUsers, updateUser, deleteUser } from '../js/db.js';
+import { logAction, getUserStats, listUsers, updateUser, deleteUser, listReservas, getUserById, getUserByEmail, registerUser } from '../js/db.js';
 
 export function render() {
   return `
@@ -228,16 +228,34 @@ export function mount({ currentUser, navigate, showToast } = {}) {
       <section class="users-section chart-card">
         <div class="chart-header"><h3>Gestión de usuarios</h3></div>
         <div class="users-actions">
-          <div class="role-tabs">
-            <button class="btn btn-sm role-tab active" data-role="estudiante">Estudiantes</button>
-            <button class="btn btn-sm role-tab" data-role="visitante">Visitantes</button>
-            <button class="btn btn-sm role-tab" data-role="admin">Administradores</button>
+          <div class="users-actions-left">
+            <div class="role-tabs">
+              <button class="btn btn-sm role-tab active" data-role="estudiante">Estudiantes</button>
+              <button class="btn btn-sm role-tab" data-role="visitante">Visitantes</button>
+              <button class="btn btn-sm role-tab" data-role="admin">Administradores</button>
+            </div>
+            <div class="filters-group" id="students-filters">
+              <select id="students-filter-career">
+                <option value="">Todas las carreras</option>
+              </select>
+              <select id="students-filter-semester">
+                <option value="">Todos los semestres</option>
+              </select>
+              <select id="students-filter-status">
+                <option value="">Todos los estados</option>
+                <option value="activo">Activo</option>
+                <option value="inactivo">Inactivo</option>
+              </select>
+            </div>
           </div>
-          <input type="search" id="user-search" placeholder="Buscar por nombre o correo" />
+          <div class="users-actions-right">
+            <input type="search" id="user-search" placeholder="Buscar por nombre o correo" />
+            <button id="user-add-btn" class="btn btn-primary" title="Añadir un nuevo registro"><i class="fas fa-plus"></i> Añadir registro</button>
+          </div>
         </div>
         <div class="users-table-wrap">
           <table class="users-table">
-            <thead>
+            <thead id="users-table-head">
               <tr>
                 <th>Nombre</th>
                 <th>Correo</th>
@@ -256,7 +274,7 @@ export function mount({ currentUser, navigate, showToast } = {}) {
         <div id="user-edit-modal" class="modal hidden">
           <div class="modal-content">
             <div class="modal-header">
-              <h3>Editar usuario</h3>
+              <h3 id="user-edit-title">Editar usuario</h3>
               <button class="modal-close" id="user-edit-close">&times;</button>
             </div>
             <div class="modal-body">
@@ -280,11 +298,40 @@ export function mount({ currentUser, navigate, showToast } = {}) {
                 <label>Nueva contraseña</label>
                 <input type="password" id="edit-user-password" placeholder="Deja vacío para mantener" />
 
+                <div id="admin-fields" class="admin-only" style="display:none">
+                  <label>Código administrador</label>
+                  <input type="password" id="edit-user-admin-code" placeholder="ADMIN2025" />
+                </div>
+
                 <div id="student-fields" class="student-only">
                   <label>Carrera</label>
-                  <input type="text" id="edit-user-career" placeholder="Ej: ingeniería" />
+                  <select id="edit-user-career">
+                    <option value="">Seleccionar carrera</option>
+                    <option value="Administración de Empresas">Administración de Empresas</option>
+                    <option value="Contaduría Pública">Contaduría Pública</option>
+                    <option value="Trabajo social">Trabajo social</option>
+                    <option value="Ingeniería en sistemas">Ingeniería en sistemas</option>
+                    <option value="Licenciatura infantil">Licenciatura infantil</option>
+                    <option value="Sin carrera">Sin carrera</option>
+                  </select>
                   <label>Semestre</label>
-                  <input type="text" id="edit-user-semester" placeholder="Ej: 3" />
+                  <select id="edit-user-semester">
+                    <option value="">Seleccionar semestre</option>
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="4">4</option>
+                    <option value="5">5</option>
+                    <option value="6">6</option>
+                    <option value="7">7</option>
+                    <option value="8">8</option>
+                    <option value="9">9</option>
+                    <option value="10">10</option>
+                  </select>
+                </div>
+                <div id="visitor-fields" class="visitor-only">
+                  <label>Motivo de la visita</label>
+                  <input type="text" id="edit-user-visit-reason" placeholder="Motivo..." />
                 </div>
               </div>
               <p id="user-edit-error" class="form-error"></p>
@@ -505,14 +552,15 @@ export function mount({ currentUser, navigate, showToast } = {}) {
   const findUserByCode = async (raw) => {
     const code = String(raw || '').trim().toLowerCase();
     if (!code) return null;
-    let user = await db.users.where('email').equals(code).first();
+    let user = await getUserByEmail(code);
     if (user) return user;
     const m = code.match(/(?:uid:|ug-)(\d+)/);
     if (m) {
-      user = await db.users.get(Number(m[1]));
+      user = await getUserById(Number(m[1]));
       if (user) return user;
     }
-    const arr = await db.users.filter(u => (u.userCode || '').toLowerCase() === code).toArray();
+    const allUsers = await listUsers();
+    const arr = allUsers.filter(u => (u.userCode || '').toLowerCase() === code);
     return arr[0] || null;
   };
 
@@ -799,6 +847,12 @@ export function mount({ currentUser, navigate, showToast } = {}) {
   const initUsuariosAdmin = () => {
     const tbody = document.getElementById('users-table-body');
     const searchEl = document.getElementById('user-search');
+    const filtersWrap = document.getElementById('students-filters');
+    const usersTableEl = document.querySelector('.users-table');
+    const usersTableWrapEl = document.querySelector('.users-table-wrap');
+    const filterCareerEl = document.getElementById('students-filter-career');
+    const filterSemesterEl = document.getElementById('students-filter-semester');
+    const filterStatusEl = document.getElementById('students-filter-status');
     const roleTabs = document.querySelectorAll('.role-tab');
     const modal = document.getElementById('user-edit-modal');
     const closeBtn = document.getElementById('user-edit-close');
@@ -814,12 +868,47 @@ export function mount({ currentUser, navigate, showToast } = {}) {
     const careerEl = document.getElementById('edit-user-career');
     const semesterEl = document.getElementById('edit-user-semester');
     const studentFields = document.getElementById('student-fields');
+    const visitorFields = document.getElementById('visitor-fields');
+    const visitReasonEl = document.getElementById('edit-user-visit-reason');
+    const addBtn = document.getElementById('user-add-btn');
+    const titleEl = document.getElementById('user-edit-title');
+    const adminCodeEl = document.getElementById('edit-user-admin-code');
+    const adminFieldsEl = document.getElementById('admin-fields');
+
+    let isCreating = false;
+
+    // Lista fija de carreras y normalización para coincidir valores guardados
+    const fixedCareers = [
+      'Administración de Empresas',
+      'Contaduría Pública',
+      'Trabajo social',
+      'Ingeniería en sistemas',
+      'Licenciatura infantil',
+      'Sin carrera'
+    ];
+    const normalize = (s) => (s||'')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim();
+    const careerCanonicalMap = {
+      'administracion de empresas': 'Administración de Empresas',
+      'contaduria publica': 'Contaduría Pública',
+      'trabajo social': 'Trabajo social',
+      'ingenieria en sistemas': 'Ingeniería en sistemas',
+      'licenciatura infantil': 'Licenciatura infantil',
+      'sin carrera': 'Sin carrera'
+    };
+    const canonicalizeCareer = (s) => careerCanonicalMap[normalize(s)] || null;
 
     if (!tbody || !modal) return;
 
     let usersCache = [];
     let query = '';
     let roleFilter = 'estudiante';
+    let fCareer = '';
+    let fSemester = '';
+    let fStatus = '';
 
     const roleLabel = (r) => {
       if (r === 'admin') return 'Administrador';
@@ -830,15 +919,24 @@ export function mount({ currentUser, navigate, showToast } = {}) {
 
     const openModal = (u) => {
       errEl.textContent = '';
+      isCreating = false;
+      if (titleEl) titleEl.textContent = 'Editar usuario';
+      if (deleteBtn) deleteBtn.style.display = 'inline-block';
       idEl.value = u.id;
       nameEl.value = u.name || '';
       emailEl.value = u.email || '';
       roleEl.value = u.role || 'visitante';
       statusEl.value = u.status || 'activo';
       passEl.value = '';
-      careerEl.value = u.career || '';
-      semesterEl.value = u.semester || '';
+      if (adminCodeEl) adminCodeEl.value = '';
+      const canonCareer = canonicalizeCareer(u.career || '') || (u.career ? '' : 'Sin carrera');
+      careerEl.value = fixedCareers.includes(canonCareer) ? canonCareer : '';
+      const sem = (u.semester||'').toString().trim();
+      if (Array.from(semesterEl.options).some(opt => opt.value === sem)) semesterEl.value = sem; else semesterEl.value = '';
       studentFields.style.display = roleEl.value === 'estudiante' ? 'grid' : 'none';
+      if (visitReasonEl) visitReasonEl.value = (u.visitReason || '').trim();
+      if (visitorFields) visitorFields.style.display = roleEl.value === 'visitante' ? 'grid' : 'none';
+      if (adminFieldsEl) adminFieldsEl.style.display = 'none';
       modal.classList.remove('hidden');
     };
 
@@ -846,35 +944,166 @@ export function mount({ currentUser, navigate, showToast } = {}) {
       modal.classList.add('hidden');
     };
 
+    const refreshFilterOptions = () => {
+      // Opciones fijas para carreras según la paleta del gráfico
+      const careers = [
+        'Administración de Empresas',
+        'Contaduría Pública',
+        'Trabajo social',
+        'Ingeniería en sistemas',
+        'Licenciatura infantil',
+        'Sin carrera'
+      ];
+      // Semestres derivados de datos actuales (si existen) y ordenados
+      const sUsers = (usersCache||[]).filter(u => (u.role||'') === 'estudiante');
+      const semesters = Array.from(new Set(sUsers.map(u => (u.semester||'').trim()).filter(Boolean))).sort((a,b)=>{
+        const na = Number(a); const nb = Number(b);
+        if (!isNaN(na) && !isNaN(nb)) return na-nb; return a.localeCompare(b);
+      });
+      if (filterCareerEl) {
+        const prev = fCareer;
+        filterCareerEl.innerHTML = '<option value="">Todas las carreras</option>' + careers.map(c => `<option value="${c}">${c}</option>`).join('');
+        // Mantener selección si existe
+        if (prev && careers.includes(prev)) filterCareerEl.value = prev; else filterCareerEl.value = '';
+      }
+      if (filterSemesterEl) {
+        const prev = fSemester;
+        filterSemesterEl.innerHTML = '<option value="">Todos los semestres</option>' + semesters.map(s => `<option value="${s}">${s}</option>`).join('');
+        if (prev && semesters.includes(prev)) filterSemesterEl.value = prev; else filterSemesterEl.value = '';
+      }
+      if (filterStatusEl) {
+        const allowed = ['', 'activo', 'inactivo'];
+        if (!allowed.includes(fStatus)) fStatus = '';
+        filterStatusEl.value = fStatus;
+      }
+    };
+
     const renderTable = async () => {
       usersCache = await listUsers();
+      // Actualizar opciones de filtros cuando estemos en estudiantes
+      refreshFilterOptions();
+      // Actualizar encabezado según el rol seleccionado
+      const thead = document.getElementById('users-table-head');
+      if (thead) {
+        if (roleFilter === 'estudiante') {
+          thead.innerHTML = `
+            <tr>
+              <th>Nombre</th>
+              <th>Correo</th>
+              <th>Rol</th>
+              <th>Estado</th>
+              <th>Carrera</th>
+              <th>Semestre</th>
+              <th style="width:140px">Acciones</th>
+            </tr>`;
+        } else if (roleFilter === 'visitante') {
+          thead.innerHTML = `
+            <tr>
+              <th>Nombre</th>
+              <th>Correo</th>
+              <th>Rol</th>
+              <th>Estado</th>
+              <th>Motivo de la visita</th>
+              <th style="width:140px">Acciones</th>
+            </tr>`;
+        } else {
+          // Administradores
+          thead.innerHTML = `
+            <tr>
+              <th>Nombre</th>
+              <th>Correo</th>
+              <th>Rol</th>
+              <th>Estado</th>
+              <th style="width:140px">Acciones</th>
+            </tr>`;
+        }
+      }
+      // Alternar clases por rol para permitir ajustes de estilo específicos
+      if (usersTableEl) {
+        usersTableEl.classList.toggle('students-view', roleFilter === 'estudiante');
+        usersTableEl.classList.toggle('visitors-view', roleFilter === 'visitante');
+        usersTableEl.classList.toggle('admins-view', roleFilter === 'admin');
+      }
       const filtered = (usersCache || []).filter(u => {
         const t = query.toLowerCase();
         const matchesQuery = (u.name||'').toLowerCase().includes(t) || (u.email||'').toLowerCase().includes(t);
         const matchesRole = roleFilter ? ((u.role||'') === roleFilter) : true;
-        return matchesQuery && matchesRole;
+        const matchesStatus = !fStatus || ((u.status||'') === fStatus);
+        let matchesCareer = true, matchesSemester = true;
+        if (roleFilter === 'estudiante') {
+          const careerVal = (u.career||'').trim() || 'Sin carrera';
+          const semesterVal = (u.semester||'').trim();
+          matchesCareer = !fCareer || (careerVal === fCareer);
+          matchesSemester = !fSemester || (semesterVal === fSemester);
+        }
+        return matchesQuery && matchesRole && matchesStatus && matchesCareer && matchesSemester;
       });
-      tbody.innerHTML = filtered.map(u => `
-        <tr data-id="${u.id}">
-          <td>${u.name||''}</td>
-          <td>${u.email||''}</td>
-          <td>${roleLabel(u.role)}</td>
-          <td>${u.status||''}</td>
-          <td>${u.career||''}</td>
-          <td>${u.semester||''}</td>
-          <td>
-            <button class="btn btn-sm user-edit">Editar</button>
-            <button class="btn btn-danger btn-sm user-delete">Eliminar</button>
-          </td>
-        </tr>
-      `).join('');
+      // Si estamos en visitantes, obtener últimos motivos de reserva
+      let reasonByUser = {};
+      if (roleFilter === 'visitante') {
+        await Promise.all(filtered.map(async (u) => {
+          try {
+            const arr = await listReservas(u.id);
+            arr.sort((a,b) => new Date(b.date) - new Date(a.date));
+            reasonByUser[u.id] = (arr[0]?.motivo || '').trim();
+          } catch (_) {
+            reasonByUser[u.id] = '';
+          }
+        }));
+      }
+
+      tbody.innerHTML = filtered.map(u => {
+        const statusCls = ((u.status||'').toLowerCase() === 'activo') ? 'chip--status-active' : 'chip--status-inactive';
+        if (roleFilter === 'estudiante') {
+          return `
+            <tr data-id="${u.id}">
+              <td>${u.name||''}</td>
+              <td>${u.email||''}</td>
+              <td>${roleLabel(u.role)}</td>
+              <td><span class="chip ${statusCls}">${u.status||''}</span></td>
+              <td><span class="chip chip--career">${(u.career||'Sin carrera')}</span></td>
+              <td><span class="chip chip--semester">${(u.semester||'')}</span></td>
+              <td>
+                <button class="btn btn-sm user-edit">Editar</button>
+                <button class="btn btn-danger btn-sm user-delete">Eliminar</button>
+              </td>
+            </tr>`;
+        } else if (roleFilter === 'visitante') {
+          const motivo = ((u.visitReason || reasonByUser[u.id] || '')).trim() || '—';
+          return `
+            <tr data-id="${u.id}">
+              <td>${u.name||''}</td>
+              <td>${u.email||''}</td>
+              <td>${roleLabel(u.role)}</td>
+              <td><span class="chip ${statusCls}">${u.status||''}</span></td>
+              <td><span class="chip chip--reason">${motivo}</span></td>
+              <td>
+                <button class="btn btn-sm user-edit">Editar</button>
+                <button class="btn btn-danger btn-sm user-delete">Eliminar</button>
+              </td>
+            </tr>`;
+        } else {
+          // Administradores
+          return `
+            <tr data-id="${u.id}">
+              <td>${u.name||''}</td>
+              <td>${u.email||''}</td>
+              <td>${roleLabel(u.role)}</td>
+              <td><span class="chip ${statusCls}">${u.status||''}</span></td>
+              <td>
+                <button class="btn btn-sm user-edit">Editar</button>
+                <button class="btn btn-danger btn-sm user-delete">Eliminar</button>
+              </td>
+            </tr>`;
+        }
+      }).join('');
 
       // Bind eventos por fila
       tbody.querySelectorAll('.user-edit').forEach(btn => {
         btn.addEventListener('click', async (e) => {
           const tr = e.target.closest('tr');
           const id = Number(tr.getAttribute('data-id'));
-          const user = usersCache.find(x => x.id === id) || await db.users.get(id);
+          const user = usersCache.find(x => x.id === id) || await getUserById(id);
           if (user) openModal(user);
         });
       });
@@ -896,7 +1125,7 @@ export function mount({ currentUser, navigate, showToast } = {}) {
       });
     };
 
-    // Guardar cambios
+    // Guardar cambios (creación o edición)
     const saveChanges = async () => {
       errEl.textContent = '';
       const id = Number(idEl.value);
@@ -907,37 +1136,60 @@ export function mount({ currentUser, navigate, showToast } = {}) {
       const password = passEl.value;
       const career = careerEl.value.trim();
       const semester = semesterEl.value.trim();
-
-      if (!id || !name || !email || !role) {
+      const visitReason = visitReasonEl ? visitReasonEl.value.trim() : '';
+      const adminCode = adminCodeEl ? adminCodeEl.value.trim() : '';
+      if (!name || !email || !role) {
         errEl.textContent = 'Completa nombre, correo y rol.';
         return;
       }
 
       // Validar correo único
-      const existing = await db.users.where('email').equals(email).first();
+      const existing = await getUserByEmail(email);
       if (existing && existing.id !== id) {
         errEl.textContent = 'Ese correo ya está registrado por otro usuario.';
         return;
       }
 
-      const update = { name, email, role, status };
-      if (password) update.password = password; // se hashea en updateUser
-      if (role === 'estudiante') { update.career = career; update.semester = semester; }
-      else { update.career = ''; update.semester = ''; }
+      if (!isCreating) {
+        const update = { name, email, role, status };
+        if (password) update.password = password; // se hashea en updateUser
+        if (role === 'estudiante') { update.career = career; update.semester = semester; }
+        else { update.career = ''; update.semester = ''; }
+        if (role === 'visitante') { update.visitReason = visitReason; } else { update.visitReason = ''; }
+        try {
+          await updateUser(id, update);
+          if (typeof showToast === 'function') showToast('Usuario actualizado', 'success');
+          closeModal();
+          renderTable();
+        } catch (err) {
+          errEl.textContent = 'Error al guardar: ' + (err.message || err);
+        }
+        return;
+      }
 
+      // Creación de usuario
+      if (!password) {
+        errEl.textContent = 'Para crear un usuario, ingresa una contraseña.';
+        return;
+      }
       try {
-        await updateUser(id, update);
-        if (typeof showToast === 'function') showToast('Usuario actualizado', 'success');
+        const newId = await registerUser({ name, email, password, role, adminCode, career: role==='estudiante'?career:'', semester: role==='estudiante'?semester:'', status });
+        if (role === 'visitante' && visitReason) {
+          await updateUser(newId, { visitReason });
+        }
+        if (typeof showToast === 'function') showToast('Usuario creado', 'success');
         closeModal();
         renderTable();
       } catch (err) {
-        errEl.textContent = 'Error al guardar: ' + (err.message || err);
+        errEl.textContent = 'Error al crear: ' + (err.message || err);
       }
     };
 
     // Eventos UI
     roleEl.addEventListener('change', () => {
       studentFields.style.display = roleEl.value === 'estudiante' ? 'grid' : 'none';
+      if (visitorFields) visitorFields.style.display = roleEl.value === 'visitante' ? 'grid' : 'none';
+      if (adminFieldsEl) adminFieldsEl.style.display = (isCreating && roleEl.value === 'admin') ? 'grid' : 'none';
     });
     saveBtn.addEventListener('click', saveChanges);
     deleteBtn.addEventListener('click', async () => {
@@ -956,6 +1208,30 @@ export function mount({ currentUser, navigate, showToast } = {}) {
     closeBtn.addEventListener('click', closeModal);
     modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
 
+    // Añadir nuevo usuario
+    if (addBtn) {
+      addBtn.addEventListener('click', () => {
+        errEl.textContent = '';
+        isCreating = true;
+        if (titleEl) titleEl.textContent = 'Añadir usuario';
+        if (deleteBtn) deleteBtn.style.display = 'none';
+        idEl.value = '';
+        nameEl.value = '';
+        emailEl.value = '';
+        roleEl.value = (roleFilter || 'visitante');
+        statusEl.value = 'activo';
+        passEl.value = '';
+        if (adminCodeEl) adminCodeEl.value = '';
+        careerEl.value = '';
+        semesterEl.value = '';
+        if (visitReasonEl) visitReasonEl.value = '';
+        studentFields.style.display = roleEl.value === 'estudiante' ? 'grid' : 'none';
+        if (visitorFields) visitorFields.style.display = roleEl.value === 'visitante' ? 'grid' : 'none';
+        if (adminFieldsEl) adminFieldsEl.style.display = (roleEl.value === 'admin') ? 'grid' : 'none';
+        modal.classList.remove('hidden');
+      });
+    }
+
     if (searchEl) {
       searchEl.addEventListener('input', (e) => { query = (e.target.value||'').trim(); renderTable(); });
     }
@@ -967,10 +1243,22 @@ export function mount({ currentUser, navigate, showToast } = {}) {
           roleTabs.forEach(t => t.classList.remove('active'));
           tab.classList.add('active');
           roleFilter = tab.getAttribute('data-role');
+          // Mostrar/ocultar filtros de estudiantes
+          if (filtersWrap) filtersWrap.style.display = roleFilter === 'estudiante' ? 'flex' : 'none';
           renderTable();
         });
       });
     }
+
+    // Eventos de filtros
+    if (filterCareerEl) filterCareerEl.addEventListener('change', (e) => { fCareer = e.target.value; renderTable(); });
+    if (filterSemesterEl) filterSemesterEl.addEventListener('change', (e) => { fSemester = e.target.value; renderTable(); });
+    if (filterStatusEl) filterStatusEl.addEventListener('change', (e) => { fStatus = e.target.value; renderTable(); });
+
+    // Estado inicial de visibilidad
+    if (filtersWrap) filtersWrap.style.display = 'flex';
+    // Estado inicial de clase de tabla (rol por defecto: estudiantes)
+    if (usersTableEl) usersTableEl.classList.add('students-view');
 
     renderTable();
   };

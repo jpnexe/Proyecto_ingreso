@@ -1,4 +1,4 @@
-import { authenticateUser, db, registerUser } from '../js/db.js';
+import { authenticateUser, registerUser, listUsers } from '../js/db.js';
 
 export function render() {
     return `
@@ -74,20 +74,6 @@ export function render() {
                             <button type="submit" class="login-btn">Ingresar</button>
                         </form>
                         <p class="register-link">¿No tienes cuenta? <a href="#/registro">Regístrate aquí</a></p>
-                        
-                        <!-- Botón temporal para resetear base de datos -->
-                        <div class="dev-tools" style="margin-top: 20px; padding: 15px; background: rgba(255, 255, 255, 0.1); border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.2);">
-                            <p style="font-size: 12px; color: #fff; margin-bottom: 10px;">🔧 Herramientas de desarrollo:</p>
-                            <button id="reset-db-btn" class="reset-db-btn" style="background: #ff6b6b; color: white; border: none; padding: 8px 15px; border-radius: 5px; font-size: 12px; cursor: pointer;">
-                                Resetear Base de Datos
-                            </button>
-                            <div style="font-size: 11px; color: #ccc; margin-top: 8px;">
-                                <strong>Usuarios de prueba:</strong><br>
-                                📚 Estudiante: estudiante@uni.com / 123456<br>
-                                👥 Visitante: visitante@uni.com / 123456<br>
-                                🔐 Admin: admin@uni.com / admin123
-                            </div>
-                        </div>
                     </div>
                     
                     <div class="uniguajira-right-content">
@@ -152,8 +138,8 @@ export function mount({ navigate, showToast: showModal }) {
     }
     
     try {
-      // Verificar qué usuarios hay en la base de datos
-      const allUsers = await db.users.toArray();
+      // Verificar qué usuarios hay en la base de datos (SQLite)
+      const allUsers = await listUsers();
       console.log('Usuarios disponibles en la base de datos:', allUsers);
       
       const user = await authenticateUser(email, password);
@@ -194,85 +180,7 @@ export function mount({ navigate, showToast: showModal }) {
     }
   });
 
-  // Event listener para el botón de reseteo de base de datos
-  const resetDbBtn = document.getElementById('reset-db-btn');
-  if (resetDbBtn) {
-    resetDbBtn.addEventListener('click', async () => {
-      try {
-        resetDbBtn.textContent = 'Reseteando...';
-        resetDbBtn.disabled = true;
-        
-        // Limpiar la base de datos
-        await db.users.clear();
-        await db.reservas.clear();
-        await db.announcements.clear();
-        
-        // Recrear usuarios de prueba
-        await registerUser({
-          name: 'Admin',
-          email: 'admin@uni.com',
-          password: 'admin123',
-          role: 'admin',
-          adminCode: 'ADMIN2025',
-        });
-        
-        await registerUser({
-          name: 'María García Rodríguez',
-          email: 'estudiante@uni.com',
-          password: '123456',
-          role: 'estudiante',
-        });
-        
-        await registerUser({
-          name: 'Carlos López Martínez',
-          email: 'visitante@uni.com',
-          password: '123456',
-          role: 'visitante',
-        });
-        
-        // Recrear anuncios
-        await db.announcements.bulkAdd([
-          {
-            title: 'Inicio de semestre',
-            body: 'El semestre académico inicia el próximo lunes. Consulta tu horario.',
-            createdAt: new Date(),
-          },
-          {
-            title: 'Actualización de biblioteca',
-            body: 'Nueva sala de estudio y préstamo de portátiles disponible.',
-            createdAt: new Date(),
-          },
-          {
-            title: 'Semana de bienestar',
-            body: 'Jornadas deportivas y de salud durante toda la semana.',
-            createdAt: new Date(),
-          },
-          {
-            title: 'Inscripciones abiertas',
-            body: 'Las inscripciones para el próximo semestre están disponibles hasta el 15 de diciembre.',
-            createdAt: new Date(),
-          },
-          {
-            title: 'Conferencia de Ingeniería',
-            body: 'Gran conferencia sobre nuevas tecnologías en ingeniería. Auditorio principal, 2:00 PM.',
-            createdAt: new Date(),
-          },
-        ]);
-        
-        // Verificar que los usuarios se crearon correctamente
-        const allUsers = await db.users.toArray();
-        console.log('Usuarios en la base de datos:', allUsers);
-        
-        showModal(`Base de datos reseteada. ${allUsers.length} usuarios creados`, 'success');
-        resetDbBtn.textContent = 'Resetear Base de Datos';
-        resetDbBtn.disabled = false;
-      } catch (error) {
-        showModal('Error al resetear la base de datos: ' + error.message, 'error');
-        resetDbBtn.textContent = 'Resetear Base de Datos';
-        resetDbBtn.disabled = false;
-      }
-    });
-  }
+  // Herramientas de desarrollo eliminadas: se removió el botón de reset de BD
 
   // Toggle password visibility
   const passwordToggle = document.querySelector('.password-toggle');
