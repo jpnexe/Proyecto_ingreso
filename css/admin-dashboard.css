@@ -920,7 +920,7 @@ body {
 .task-detail h3 { margin: 0 0 8px 0; font-size: 16px; }
 .detail-row { display: grid; grid-template-columns: 120px 1fr; align-items: center; gap: 10px; margin: 8px 0; }
 .detail-label { display: block; margin-bottom: 6px; }
-.task-detail input, .task-detail textarea {
+.task-detail input, .task-detail textarea, .task-detail select {
   width: 100%;
   padding: 10px 12px;
   border-radius: 10px;

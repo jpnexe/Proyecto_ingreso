@@ -1,4 +1,28 @@
 @echo off
+setlocal
+REM Lanzador del proyecto vía Python (iniciar_proyecto.py)
+
+set SCRIPT_DIR=%~dp0
+REM Ir al root del proyecto
+cd /d "%SCRIPT_DIR%.."
+
+echo Iniciando proyecto...
+REM Intentar con 'py' primero (Windows), luego 'python'
+where py >nul 2>&1
+if %errorlevel%==0 (
+  py "%SCRIPT_DIR%iniciar_proyecto.py"
+) else (
+  where python >nul 2>&1
+  if %errorlevel%==0 (
+    python "%SCRIPT_DIR%iniciar_proyecto.py"
+  ) else (
+    echo No se encontró Python en PATH. Instala Python 3 o agrega 'py'/'python' al PATH.
+    echo Puedes ejecutar manualmente: python config\iniciar_proyecto.py
+    pause
+  )
+)
+
+endlocal
 setlocal ENABLEDELAYEDEXPANSION
 title Mi Ingreso – Inicio rápido
 

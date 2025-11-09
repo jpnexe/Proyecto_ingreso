@@ -17,6 +17,7 @@ let SQL = null;
 let sqliteDb = null;
 let sqliteReady = false;
 const USE_SQLITE = true; // Activar SQLite como capa de almacenamiento principal
+const REMOTE_SQLITE_ENDPOINT = '/api/sqlite';
 
 // Cargar sql.js vía npm o CDN de forma robusta
 function injectScript(src) {
@@ -90,15 +91,41 @@ async function idbSet(key, value) {
   });
 }
 
+// --- Persistencia remota (desarrollo): archivo SQLite centralizado en el servidor ---
+async function remoteGetSQLite() {
+  try {
+    const res = await fetch(REMOTE_SQLITE_ENDPOINT, { method: 'GET', cache: 'no-store' });
+    if (!res.ok) return null;
+    const buf = new Uint8Array(await res.arrayBuffer());
+    return buf && buf.length ? buf : null;
+  } catch (_) {
+    return null; // Si falla, continuamos con IndexedDB local
+  }
+}
+
+async function remoteSetSQLite(data) {
+  try {
+    await fetch(REMOTE_SQLITE_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/octet-stream' },
+      body: data
+    });
+    return true;
+  } catch (_) {
+    return false; // Silenciar errores en desarrollo para no interrumpir flujo
+  }
+}
+
 // Abrir/crear BD SQLite y crear tablas si no existen
 async function openSQLite() {
   if (!SQL) await loadSqlJs();
-  const buffer = await idbGet('sqlite_db_v1');
-  if (buffer) {
-    sqliteDb = new SQL.Database(new Uint8Array(buffer));
-  } else {
-    sqliteDb = new SQL.Database();
+  // Preferir la copia remota compartida; si no existe, usar IndexedDB local; si tampoco, crear nueva
+  let buffer = null;
+  try { buffer = await remoteGetSQLite(); } catch (_) {}
+  if (!buffer) {
+    try { buffer = await idbGet('sqlite_db_v1'); } catch (_) { buffer = null; }
   }
+  sqliteDb = buffer ? new SQL.Database(new Uint8Array(buffer)) : new SQL.Database();
   sqliteDb.exec(`
     PRAGMA journal_mode = WAL;
 
@@ -146,6 +173,20 @@ async function openSQLite() {
       created_at INTEGER NOT NULL,
       active INTEGER NOT NULL DEFAULT 1
     );
+
+    /* Tareas del calendario */
+    CREATE TABLE IF NOT EXISTS tasks (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'todo',
+      priority TEXT NOT NULL DEFAULT 'main',
+      assignee TEXT,
+      due TEXT,
+      tags TEXT,
+      comments TEXT,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
   `);
   sqliteReady = true;
 }
@@ -154,6 +195,8 @@ async function saveSQLite() {
   if (!sqliteDb) return;
   const data = sqliteDb.export(); // Uint8Array
   await idbSet('sqlite_db_v1', data);
+  // Guardar también en el servidor de desarrollo para compartir entre navegadores
+  try { await remoteSetSQLite(data); } catch (_) {}
 }
 
 // Helpers de consulta
@@ -285,6 +328,8 @@ export async function initDB() {
   try {
     await ensureSQLite();
     await seedIfEmpty();
+    // Asegurar que exista copia remota compartida incluso si la BD ya tenía datos
+    await saveSQLite();
   } catch (e) {
     console.error('Fallo al inicializar SQLite. La app continuará (Dexie aún está disponible vía db).', e);
   }
@@ -483,6 +528,111 @@ export async function listAnnouncements() {
   }));
 }
 
+// --- Sincronización: exportar/importar BD SQLite ---
+export async function exportSQLite() {
+  await ensureSQLite();
+  const data = sqliteDb.export();
+  return new Blob([data], { type: 'application/octet-stream' });
+}
+
+export async function importSQLite(blob) {
+  if (!blob) throw new Error('Archivo de base de datos requerido');
+  if (!SQL) await loadSqlJs();
+  const buf = new Uint8Array(await blob.arrayBuffer());
+  sqliteDb = new SQL.Database(buf);
+  sqliteReady = true;
+  await saveSQLite();
+  window.dispatchEvent(new CustomEvent('dbchange', { detail: { type: 'import' } }));
+}
+
+// --- Tareas del calendario (CRUD) ---
+export async function listTasks(filters = {}) {
+  await ensureSQLite();
+  let sql = 'SELECT id, title, status, priority, assignee, due, tags, comments, created_at, updated_at FROM tasks';
+  const conds = [];
+  const params = [];
+  if (filters.status) { conds.push('status = ?'); params.push(filters.status); }
+  if (filters.search) { conds.push('(LOWER(title) LIKE ? OR LOWER(assignee) LIKE ?)'); const q = `%${String(filters.search).toLowerCase()}%`; params.push(q, q); }
+  if (conds.length) sql += ' WHERE ' + conds.join(' AND ');
+  sql += ' ORDER BY updated_at DESC';
+  const rows = all(sql, params);
+  return rows.map(r => ({
+    id: r.id,
+    title: r.title,
+    status: r.status,
+    priority: r.priority,
+    assignee: r.assignee || '',
+    due: r.due || '',
+    tags: (r.tags || '').split(',').map(s => s.trim()).filter(Boolean),
+    comments: r.comments || '',
+    createdAt: new Date(r.created_at).toISOString(),
+    updatedAt: new Date(r.updated_at).toISOString()
+  }));
+}
+
+export async function createTask({ title, status = 'todo', priority = 'main', assignee = '', due = '', tags = [], comments = '' }) {
+  await ensureSQLite();
+  const now = Date.now();
+  run('INSERT INTO tasks (title, status, priority, assignee, due, tags, comments, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?)', [
+    String(title || '').trim() || 'Nueva tarea', status, priority, assignee, due || '', Array.isArray(tags) ? tags.join(', ') : String(tags || ''), comments, now, now
+  ]);
+  await saveSQLite();
+  const id = scalar('SELECT last_insert_rowid() as id');
+  try { await logAction(null, 'task_created', `Calendario: ${title}`); } catch {}
+  return id;
+}
+
+export async function updateTask(id, data) {
+  await ensureSQLite();
+  if (!id) throw new Error('ID de tarea requerido');
+  const map = { title: 'title', status: 'status', priority: 'priority', assignee: 'assignee', due: 'due', tags: 'tags', comments: 'comments' };
+  const sets = [];
+  const params = [];
+  for (const k of Object.keys(map)) {
+    if (data[k] !== undefined) {
+      const val = (k === 'tags' && Array.isArray(data[k])) ? data[k].join(', ') : data[k];
+      sets.push(`${map[k]} = ?`);
+      params.push(val);
+    }
+  }
+  sets.push('updated_at = ?');
+  params.push(Date.now());
+  run(`UPDATE tasks SET ${sets.join(', ')} WHERE id = ?`, [...params, id]);
+  await saveSQLite();
+}
+
+export async function deleteTask(id) {
+  await ensureSQLite();
+  run('DELETE FROM tasks WHERE id = ?', [id]);
+  await saveSQLite();
+  try { await logAction(null, 'task_deleted', `Calendario: id=${id}`); } catch {}
+}
+
+// Migración rápida desde localStorage -> SQLite
+export async function migrateLocalTasksToSQLite() {
+  await ensureSQLite();
+  try {
+    const raw = localStorage.getItem('adminCalendarTasksV2');
+    const items = raw ? JSON.parse(raw) : [];
+    if (Array.isArray(items) && items.length) {
+      for (const t of items) {
+        await createTask({
+          title: t.title,
+          status: t.status || 'todo',
+          priority: t.priority || 'main',
+          assignee: t.assignee || '',
+          due: t.due || '',
+          tags: Array.isArray(t.tags) ? t.tags : [],
+          comments: t.comments || ''
+        });
+      }
+      localStorage.removeItem('adminCalendarTasksV2');
+    }
+  } catch (e) {
+    console.warn('No se pudieron migrar tareas locales:', e);
+  }
+}
+
 // Función para registrar logs de acciones
 export async function logAction(userId, action, details) {
   try {
@@ -592,6 +742,7 @@ export async function resetDatabase() {
     DELETE FROM announcements;
     DELETE FROM logs;
     DELETE FROM sessions;
+    DELETE FROM tasks;
   `);
   await saveSQLite();
   await seedIfEmpty();

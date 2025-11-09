@@ -1,4 +1,5 @@
-import { logAction, getUserStats, listUsers, updateUser, deleteUser, listReservas, getUserById, getUserByEmail, registerUser, getLogs } from '../js/db.js';
+import { logAction, getUserStats, listUsers, updateUser, deleteUser, listReservas, getUserById, getUserByEmail, registerUser, getLogs, listTasks, createTask, updateTask, deleteTask, migrateLocalTasksToSQLite, exportSQLite, importSQLite } from '../js/db.js';
+import { altListTasks, altCreateTask, altUpdateTask, altDeleteTask, altReplaceAllTasks, altExportSQLite, altImportSQLite } from '../js/alt_db.js';
 
 export function render() {
   return `
@@ -32,6 +33,7 @@ export function render() {
                   <div class="notif-header">Novedades recientes</div>
                   <ul id="notif-preview" class="notif-list"></ul>
                   <div class="notif-actions">
+                    <button id="notif-mark-read" class="btn btn-sm" title="Marcar como leídas">Marcar como leídas</button>
                     <button id="notif-open-reportes" class="btn btn-sm" title="Ver todas">Ver todas</button>
                   </div>
                 </div>
@@ -129,12 +131,26 @@ export function mount({ currentUser, navigate, showToast } = {}) {
   const notifPopover = document.querySelector('.notifications .notifications-popover');
   const notifListEl = document.getElementById('notif-preview');
   const openAllBtn = document.getElementById('notif-open-reportes');
+  const markReadBtn = document.getElementById('notif-mark-read');
   const navReportes = document.querySelector('.sidebar-nav .nav-item[data-section="reportes"]');
+  const adminKey = currentUser?.id ? `notif_read_${currentUser.id}` : 'notif_read';
+  const getReadIds = () => {
+    try {
+      const raw = localStorage.getItem(adminKey);
+      const arr = raw ? JSON.parse(raw) : [];
+      return new Set(arr.filter(x => typeof x === 'number'));
+    } catch { return new Set(); }
+  };
+  const setReadIds = (set) => {
+    try { localStorage.setItem(adminKey, JSON.stringify(Array.from(set))); } catch {}
+  };
+  let lastPreviewIds = [];
 
   const updateNotifCount = async () => {
     try {
       const logs = await getLogs();
-      const count = (logs || []).length;
+      const readIds = getReadIds();
+      const count = (logs || []).filter(l => !readIds.has(l.id)).length;
       if (notifBadgeEl) {
         notifBadgeEl.textContent = String(count);
         notifBadgeEl.style.display = count > 0 ? 'inline-block' : 'none';
@@ -168,11 +184,16 @@ export function mount({ currentUser, navigate, showToast } = {}) {
 
   const renderNotifPreview = (logs) => {
     if (!notifListEl) return;
-    const top3 = (logs || []).slice(0,3).map(l => ({
+    const readIds = getReadIds();
+    const top3 = (logs || [])
+      .filter(l => !readIds.has(l.id))
+      .slice(0,3)
+      .map(l => ({
       ...l,
       category: deriveCategory(String(l.action||'')),
       severity: deriveSeverity(String(l.action||'')),
     }));
+    lastPreviewIds = top3.map(l => l.id);
     notifListEl.innerHTML = top3.length ? top3.map(l => `
       <li class="notif-item">
         <div class="notif-row">
@@ -182,7 +203,7 @@ export function mount({ currentUser, navigate, showToast } = {}) {
         </div>
         <div class="notif-msg">${l.details ? l.details : l.action}</div>
       </li>
-    `).join('') : '<li class="notif-empty">No hay novedades</li>';
+    `).join('') : '<li class="notif-empty">No hay novedades pendientes</li>';
   };
 
   const openPopover = () => { if (notifPopover) notifPopover.classList.remove('hidden'); };
@@ -204,12 +225,26 @@ export function mount({ currentUser, navigate, showToast } = {}) {
       navReportes.click();
     });
   }
+  if (markReadBtn) {
+    markReadBtn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      const set = getReadIds();
+      lastPreviewIds.forEach(id => set.add(id));
+      setReadIds(set);
+      const logs = await updateNotifCount();
+      renderNotifPreview(logs);
+      if (typeof showToast === 'function') showToast('Novedades marcadas como leídas', 'success');
+    });
+  }
 
   // Inicializar contador al montar
   updateNotifCount();
 
   const templates = {
     inicio: () => `
+      <section class="charts-toolbar" style="display:flex; justify-content:flex-end; margin-bottom:12px;">
+        <button id="refresh-stats-btn" class="btn">Actualizar estadísticas</button>
+      </section>
       <section class="kpi-grid">
         <div class="kpi-card dark"><div class="kpi-header"><span>Total de usuarios</span><i class="fas fa-users"></i></div><div id="kpi-total-users" class="kpi-value">-</div><div class="kpi-change positive">Actualizado</div></div>
         <div class="kpi-card"><div class="kpi-header"><span>Administradores</span><i class="fas fa-user-shield"></i></div><div id="kpi-admins" class="kpi-value">-</div><div class="kpi-change positive">Actualizado</div></div>
@@ -303,7 +338,9 @@ export function mount({ currentUser, navigate, showToast } = {}) {
               <div class="segmented" role="tablist">
                 <button class="seg-btn active" data-filter="todo">Por hacer</button>
                 <button class="seg-btn" data-filter="in_progress">En progreso</button>
+                <button class="seg-btn" data-filter="done">Completadas</button>
               </div>
+              <button id="task-add-btn" class="btn btn-primary btn-sm" title="Añadir tarea"><i class="fas fa-plus"></i> Añadir</button>
             </div>
             <div id="tasks-list" class="tasks-list"></div>
           </div>
@@ -314,11 +351,29 @@ export function mount({ currentUser, navigate, showToast } = {}) {
               <input id="detail-title" type="text" placeholder="Título de la tarea" />
               <div class="detail-row">
                 <label>Asignado a</label>
-                <input id="detail-assignee" type="text" placeholder="Nombre" />
+                <input id="detail-assignee" type="text" placeholder="Nombre" list="assignee-list" />
+                <datalist id="assignee-list"></datalist>
               </div>
               <div class="detail-row">
                 <label>Fecha de entrega</label>
                 <input id="detail-due" type="date" />
+              </div>
+              <div class="detail-row">
+                <label>Estado</label>
+                <select id="detail-status">
+                  <option value="todo">Por hacer</option>
+                  <option value="in_progress">En progreso</option>
+                  <option value="done">Completada</option>
+                </select>
+              </div>
+              <div class="detail-row">
+                <label>Prioridad</label>
+                <select id="detail-priority">
+                  <option value="main">Principal</option>
+                  <option value="high">Alta</option>
+                  <option value="medium">Media</option>
+                  <option value="low">Baja</option>
+                </select>
               </div>
               <div class="detail-row">
                 <label>Etiquetas</label>
@@ -329,6 +384,7 @@ export function mount({ currentUser, navigate, showToast } = {}) {
                 <textarea id="detail-comments" rows="3" placeholder="Comentarios"></textarea>
               </div>
               <div class="detail-actions">
+                <button id="detail-new" class="btn">Nueva</button>
                 <button id="detail-save" class="btn">Guardar</button>
                 <button id="detail-delete" class="btn btn-danger">Eliminar</button>
               </div>
@@ -460,7 +516,36 @@ export function mount({ currentUser, navigate, showToast } = {}) {
     ajustes: () => `
       <section class="settings-section chart-card">
         <div class="chart-header"><h3>Ajustes del panel</h3></div>
-        <p>Opciones generales del dashboard. Próximamente más controles.</p>
+        <div class="settings-grid">
+          <div class="setting-card">
+            <h4>Sincronización de datos</h4>
+            <button id="export-sqlite-btn" class="btn">Exportar datos (SQLite)</button>
+            <label class="btn" style="display:inline-block; margin-left:8px;">
+              Importar datos (SQLite)
+              <input type="file" id="import-sqlite-file" accept=".sqlite,application/octet-stream" style="display:none" />
+            </label>
+            <p class="muted">Exporta/Importa todo: usuarios, reservas, anuncios, logs y tareas.</p>
+          </div>
+          <div class="setting-card">
+            <h4>Calendario</h4>
+            <button id="migrate-tasks-btn" class="btn">Migrar tareas locales a BD</button>
+            <p class="muted">Convierte tareas guardadas en el navegador a la base de datos.</p>
+          </div>
+          <div class="setting-card">
+            <h4>BD alternativa (verificación)</h4>
+            <div style="margin-bottom:8px;">
+              <label class="switch">
+                <input type="checkbox" id="dual-write-toggle" />
+                <span class="slider"></span>
+              </label>
+              <span style="margin-left:8px;">Escritura doble de tareas (primaria + secundaria)</span>
+            </div>
+            <div style="margin-bottom:8px;">
+              <button id="compare-db-btn" class="btn">Comparar BD primaria vs secundaria</button>
+            </div>
+            <div id="compare-result" class="muted" style="white-space:pre-wrap;"></div>
+          </div>
+        </div>
       </section>
     `,
     buscar: () => `
@@ -477,6 +562,32 @@ export function mount({ currentUser, navigate, showToast } = {}) {
   let dailyRegsChart = null;
 
   const initInicioCharts = async () => {
+    const refreshBtn = document.getElementById('refresh-stats-btn');
+    if (refreshBtn && !refreshBtn.dataset.bound) {
+      refreshBtn.dataset.bound = '1';
+      refreshBtn.addEventListener('click', async () => {
+        try {
+          refreshBtn.disabled = true;
+          // Actualizar KPIs y tablas
+          await initInicioData();
+          // Destruir gráficos existentes si los hay
+          try { if (categoriesChart && typeof categoriesChart.destroy === 'function') categoriesChart.destroy(); } catch {}
+          try { if (dailyRegsChart && typeof dailyRegsChart.destroy === 'function') dailyRegsChart.destroy(); } catch {}
+          categoriesChart = null;
+          dailyRegsChart = null;
+          // Recrear gráficos con datos actuales
+          await initInicioCharts();
+          applyAdaptiveRatios();
+          if (typeof showToast === 'function') showToast('Estadísticas actualizadas', 'success');
+          if (currentUser && currentUser.id) await logAction(currentUser.id, 'stats_refresh', 'Inicio: actualización manual de estadísticas');
+        } catch (e) {
+          console.error('Error al actualizar estadísticas:', e);
+          if (typeof showToast === 'function') showToast('Error al actualizar estadísticas', 'error');
+        } finally {
+          refreshBtn.disabled = false;
+        }
+      });
+    }
     const categoriesCanvas = document.getElementById('career-distribution-chart');
     const dailyCanvas = document.getElementById('daily-role-registrations-chart');
     if (!categoriesCanvas) return;
@@ -831,31 +942,50 @@ export function mount({ currentUser, navigate, showToast } = {}) {
       title: document.getElementById('detail-title'),
       assignee: document.getElementById('detail-assignee'),
       due: document.getElementById('detail-due'),
+      status: document.getElementById('detail-status'),
+      priority: document.getElementById('detail-priority'),
       tags: document.getElementById('detail-tags'),
       comments: document.getElementById('detail-comments'),
+      newBtn: document.getElementById('detail-new'),
       save: document.getElementById('detail-save'),
       del: document.getElementById('detail-delete'),
     };
+    const addBtn = document.getElementById('task-add-btn');
+    const assigneeList = document.getElementById('assignee-list');
     if (!listEl || !searchEl || filterBtns.length === 0) return;
 
-    const STORAGE_KEY = 'adminCalendarTasksV2';
-    const saveDB = (items) => localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-    const loadDB = () => { try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; } catch { return []; } };
-
-    let tasks = loadDB();
-    if (!tasks.length) {
-      tasks = [
-        { id: 1, title: 'Diseño de portada', status: 'todo', priority: 'high', assignee: 'Nai', due: new Date().toISOString().slice(0,10), tags: ['diseño'], comments: '' },
-        { id: 2, title: 'Integrar API', status: 'in_progress', priority: 'medium', assignee: 'Von', due: new Date(Date.now()+86400000).toISOString().slice(0,10), tags: ['api'], comments: '' },
-        { id: 3, title: 'Revisión UX', status: 'todo', priority: 'main', assignee: 'Ana', due: new Date(Date.now()+2*86400000).toISOString().slice(0,10), tags: ['ux'], comments: '' },
-        { id: 4, title: 'Pruebas QA', status: 'todo', priority: 'low', assignee: 'Juan', due: new Date(Date.now()+3*86400000).toISOString().slice(0,10), tags: ['qa'], comments: '' },
-      ];
-      saveDB(tasks);
-    }
-
+    let tasks = [];
     let currentFilter = 'todo';
     let query = '';
-    let selectedId = tasks[0]?.id || null;
+    let selectedId = null;
+
+    const isDualWrite = () => localStorage.getItem('dual_write_tasks') === '1';
+
+    const seedDefaults = async () => {
+      const seeds = [
+        { title: 'Diseño de portada', status: 'todo', priority: 'high', assignee: 'Nai', due: new Date().toISOString().slice(0,10), tags: ['diseño'], comments: '' },
+        { title: 'Integrar API', status: 'in_progress', priority: 'medium', assignee: 'Von', due: new Date(Date.now()+86400000).toISOString().slice(0,10), tags: ['api'], comments: '' },
+        { title: 'Revisión UX', status: 'todo', priority: 'main', assignee: 'Ana', due: new Date(Date.now()+2*86400000).toISOString().slice(0,10), tags: ['ux'], comments: '' },
+        { title: 'Pruebas QA', status: 'todo', priority: 'low', assignee: 'Juan', due: new Date(Date.now()+3*86400000).toISOString().slice(0,10), tags: ['qa'], comments: '' },
+      ];
+      for (const s of seeds) { await createTask(s); }
+    };
+
+    const bootstrap = async () => {
+      try { await migrateLocalTasksToSQLite(); } catch {}
+      tasks = await listTasks();
+      if (!tasks.length) { await seedDefaults(); tasks = await listTasks(); }
+      selectedId = tasks[0]?.id || null;
+      renderList();
+      renderDetail();
+      // Sincronizar BD alternativa si escritura doble está activada
+      try { if (isDualWrite()) await altReplaceAllTasks(tasks); } catch {}
+      // Poblar datalist de asignatarios
+      try {
+        const users = await listUsers();
+        if (assigneeList) assigneeList.innerHTML = users.map(u => `<option value="${u.name} (${u.email})">`).join('');
+      } catch {}
+    };
 
     const badgeClass = (p) => {
       if (p === 'high') return 'status-badge high';
@@ -878,7 +1008,7 @@ export function mount({ currentUser, navigate, showToast } = {}) {
       listEl.classList.add('fade');
       listEl.innerHTML = items.map(t => `
         <div class="task-item ${t.id===selectedId?'selected':''}" data-id="${t.id}">
-          <div class="task-left"><input type="checkbox" ${t.status==='in_progress'?'checked':''} disabled></div>
+          <div class="task-left"><input type="checkbox" ${t.status==='done'?'checked':''}></div>
           <div class="task-main">
             <div class="task-title">${t.title}</div>
             <div class="task-meta">Vence ${t.due}</div>
@@ -896,6 +1026,50 @@ export function mount({ currentUser, navigate, showToast } = {}) {
           renderDetail();
         });
       });
+      // Bind checkbox toggle to marcar completada / por hacer
+      listEl.querySelectorAll('.task-item input[type="checkbox"]').forEach(chk => {
+        const wrapper = chk.closest('.task-item');
+        const id = Number(wrapper.getAttribute('data-id'));
+        const idx = tasks.findIndex(x => x.id === id);
+        if (idx >= 0) {
+          const isInProgress = tasks[idx].status === 'in_progress';
+          if (isInProgress) {
+            try { chk.indeterminate = true; } catch {}
+          } else {
+            try { chk.indeterminate = false; } catch {}
+          }
+        }
+      chk.addEventListener('change', async () => {
+        const i = tasks.findIndex(x => x.id === id);
+        if (i < 0) return;
+        const nextStatus = chk.checked ? 'done' : 'todo';
+        await updateTask(id, { status: nextStatus });
+        tasks = await listTasks();
+        try { if (isDualWrite()) await altReplaceAllTasks(tasks); } catch {}
+        renderList();
+        renderDetail();
+        if (typeof showToast === 'function') showToast(chk.checked ? 'Tarea completada' : 'Tarea marcada como por hacer', 'success');
+        if (currentUser && currentUser.id) await logAction(currentUser.id, 'task_status_updated', `Calendario: ${tasks[i].title} -> ${nextStatus}`);
+      });
+      });
+      // Ciclo rápido de prioridad haciendo click en el badge
+      listEl.querySelectorAll('.task-item .status-badge').forEach(b => {
+        b.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          const id = Number(b.closest('.task-item').getAttribute('data-id'));
+          const i = tasks.findIndex(x => x.id === id);
+          if (i < 0) return;
+          const order = ['main','high','medium','low'];
+          const cur = tasks[i].priority || 'main';
+          const next = order[(order.indexOf(cur)+1)%order.length];
+          await updateTask(id, { priority: next });
+          tasks = await listTasks();
+          try { if (isDualWrite()) await altReplaceAllTasks(tasks); } catch {}
+          renderList();
+          renderDetail();
+          if (currentUser && currentUser.id) await logAction(currentUser.id, 'task_priority_updated', `Calendario: ${tasks[i].title} -> ${next}`);
+        });
+      });
       setTimeout(() => listEl.classList.remove('fade'), 160);
     };
 
@@ -907,6 +1081,8 @@ export function mount({ currentUser, navigate, showToast } = {}) {
       detail.title.value = t.title || '';
       detail.assignee.value = t.assignee || '';
       detail.due.value = t.due || '';
+      if (detail.status) detail.status.value = t.status || 'todo';
+      if (detail.priority) detail.priority.value = t.priority || 'main';
       detail.tags.value = (t.tags||[]).join(', ');
       detail.comments.value = t.comments || '';
     };
@@ -923,37 +1099,65 @@ export function mount({ currentUser, navigate, showToast } = {}) {
       renderList();
     });
 
+    // Añadir nueva tarea desde botón superior o del panel de detalle
+    const createNewTask = async () => {
+      const payload = {
+        title: 'Nueva tarea',
+        status: 'todo',
+        priority: 'main',
+        assignee: '',
+        due: new Date().toISOString().slice(0,10),
+        tags: [],
+        comments: ''
+      };
+      const created = await createTask(payload);
+      tasks = await listTasks();
+      try { if (isDualWrite()) await altReplaceAllTasks(tasks); } catch {}
+      selectedId = created?.id || tasks[0]?.id || null;
+      renderList();
+      renderDetail();
+      if (typeof showToast === 'function') showToast('Tarea creada', 'success');
+      if (currentUser && currentUser.id) await logAction(currentUser.id, 'task_created', `Calendario: ${payload.title}`);
+    };
+    if (addBtn) addBtn.addEventListener('click', createNewTask);
+    if (detail.newBtn) detail.newBtn.addEventListener('click', createNewTask);
+
     detail.save.addEventListener('click', async () => {
       const idx = tasks.findIndex(x => x.id === selectedId);
       if (idx < 0) return;
-      tasks[idx] = {
-        ...tasks[idx],
+      const payload = {
         title: detail.title.value.trim(),
         assignee: detail.assignee.value.trim(),
         due: detail.due.value,
+        status: detail.status ? detail.status.value : tasks[idx].status,
+        priority: detail.priority ? detail.priority.value : tasks[idx].priority,
         tags: detail.tags.value.split(',').map(s => s.trim()).filter(Boolean),
         comments: detail.comments.value.trim(),
       };
-      saveDB(tasks);
+      await updateTask(selectedId, payload);
+      tasks = await listTasks();
+      try { if (isDualWrite()) await altReplaceAllTasks(tasks); } catch {}
       renderList();
       if (typeof showToast === 'function') showToast('Tarea guardada', 'success');
-      if (currentUser && currentUser.id) await logAction(currentUser.id, 'task_saved', `Calendario: ${tasks[idx].title}`);
+      if (currentUser && currentUser.id) await logAction(currentUser.id, 'task_saved', `Calendario: ${payload.title}`);
     });
 
     detail.del.addEventListener('click', async () => {
       const idx = tasks.findIndex(x => x.id === selectedId);
       if (idx < 0) return;
-      const removed = tasks.splice(idx,1)[0];
-      saveDB(tasks);
+      const toRemove = tasks[idx];
+      await deleteTask(selectedId);
+      tasks = await listTasks();
+      try { if (isDualWrite()) await altReplaceAllTasks(tasks); } catch {}
       selectedId = tasks[0]?.id || null;
       renderList();
       renderDetail();
       if (typeof showToast === 'function') showToast('Tarea eliminada', 'warning');
-      if (currentUser && currentUser.id) await logAction(currentUser.id, 'task_deleted', `Calendario: ${removed?.title||''}`);
+      if (currentUser && currentUser.id) await logAction(currentUser.id, 'task_deleted', `Calendario: ${toRemove?.title||''}`);
     });
 
-    renderList();
-    renderDetail();
+    // Cargar datos y preparar lista/detalle desde la BD
+    bootstrap();
   };
 
   // --- Gestión de Usuarios: ver y editar ---
@@ -1388,6 +1592,7 @@ export function mount({ currentUser, navigate, showToast } = {}) {
       if (key === 'reportes') initSystemLogs();
       if (key === 'calendario') initCalendarTasks();
       if (key === 'usuarios') initUsuariosAdmin();
+      if (key === 'ajustes') initAjustes();
     };
     if (firstRender) {
       swap();
@@ -1594,4 +1799,114 @@ export function mount({ currentUser, navigate, showToast } = {}) {
     });
 
     render();
+  };
+
+  // --- Ajustes: exportar/importar BD y migrar tareas ---
+  const initAjustes = () => {
+    const exportBtn = document.getElementById('export-sqlite-btn');
+    const importFile = document.getElementById('import-sqlite-file');
+    const migrateBtn = document.getElementById('migrate-tasks-btn');
+    const dualToggle = document.getElementById('dual-write-toggle');
+    const compareBtn = document.getElementById('compare-db-btn');
+    const compareResult = document.getElementById('compare-result');
+    if (exportBtn) {
+      exportBtn.addEventListener('click', async () => {
+        try {
+          const blob = await exportSQLite();
+          if (!blob) {
+            if (typeof showToast === 'function') showToast('No se pudo exportar datos', 'error');
+            return;
+          }
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'dashboard.sqlite';
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(url);
+          if (typeof showToast === 'function') showToast('Datos exportados', 'success');
+          if (currentUser && currentUser.id) logAction(currentUser.id, 'db_export', 'Exportación SQLite');
+        } catch (e) {
+          console.error('Error exportando BD:', e);
+          if (typeof showToast === 'function') showToast('Error exportando datos', 'error');
+        }
+      });
+    }
+    if (importFile) {
+      importFile.addEventListener('change', async (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+        try {
+          await importSQLite(file);
+          if (typeof showToast === 'function') showToast('Datos importados', 'success');
+          if (currentUser && currentUser.id) logAction(currentUser.id, 'db_import', 'Importación SQLite');
+          // Si estamos en calendario, recargar tareas
+          const currentSection = localStorage.getItem('adminLastSection');
+          if (currentSection === 'calendario') {
+            // Re-render sección calendario para recargar desde BD
+            const sectionArea = document.getElementById('section-area');
+            if (sectionArea) {
+              sectionArea.innerHTML = templates.calendario();
+              initCalendarTasks();
+            }
+          }
+        } catch (e2) {
+          console.error('Error importando BD:', e2);
+          if (typeof showToast === 'function') showToast('Error al importar datos', 'error');
+        } finally {
+          e.target.value = '';
+        }
+      });
+    }
+    if (migrateBtn) {
+      migrateBtn.addEventListener('click', async () => {
+        try {
+          await migrateLocalTasksToSQLite();
+          if (typeof showToast === 'function') showToast('Tareas migradas a BD', 'success');
+          if (currentUser && currentUser.id) logAction(currentUser.id, 'tasks_migrate', 'Migración localStorage → BD');
+        } catch (e) {
+          console.error('Error migrando tareas:', e);
+          if (typeof showToast === 'function') showToast('Error al migrar tareas', 'error');
+        }
+      });
+    }
+
+    // Escritura doble: activar/desactivar
+    if (dualToggle) {
+      const key = 'dual_write_tasks';
+      const initial = localStorage.getItem(key);
+      dualToggle.checked = initial === '1';
+      dualToggle.addEventListener('change', () => {
+        localStorage.setItem(key, dualToggle.checked ? '1' : '0');
+        if (typeof showToast === 'function') showToast(dualToggle.checked ? 'Escritura doble activada' : 'Escritura doble desactivada', 'info');
+      });
+    }
+
+    // Comparar BD principal vs alternativa
+    if (compareBtn) {
+      compareBtn.addEventListener('click', async () => {
+        try {
+          const primary = await listTasks();
+          const secondary = await altListTasks();
+          const fp = (t) => JSON.stringify({ title: t.title, status: t.status, priority: t.priority, assignee: t.assignee||'', due: t.due||'', tags: (t.tags||[]).slice().sort(), comments: t.comments||'' });
+          const pSet = new Set(primary.map(fp));
+          const sSet = new Set(secondary.map(fp));
+          let onlyPrimary = [];
+          let onlySecondary = [];
+          for (const t of primary) { const f = fp(t); if (!sSet.has(f)) onlyPrimary.push(t.title); }
+          for (const t of secondary) { const f = fp(t); if (!pSet.has(f)) onlySecondary.push(t.title); }
+          const ok = onlyPrimary.length === 0 && onlySecondary.length === 0;
+          const summary = ok
+            ? `OK: ${primary.length} tareas coinciden en ambas BD.`
+            : `Diferencias detectadas. Solo primaria: ${onlyPrimary.length}. Solo secundaria: ${onlySecondary.length}.\nPrimaria: ${onlyPrimary.join(', ')||'-'}\nSecundaria: ${onlySecondary.join(', ')||'-'}`;
+          if (compareResult) compareResult.textContent = summary;
+          if (typeof showToast === 'function') showToast(ok ? 'BDs coinciden' : 'BDs difieren', ok ? 'success' : 'warning');
+        } catch (e) {
+          console.error('Error comparando BDs:', e);
+          if (compareResult) compareResult.textContent = 'Error comparando bases de datos.';
+          if (typeof showToast === 'function') showToast('Error comparando BD', 'error');
+        }
+      });
+    }
   };
