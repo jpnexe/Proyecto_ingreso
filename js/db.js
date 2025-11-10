@@ -187,6 +187,15 @@ async function openSQLite() {
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL
     );
+
+    /* Registros de ingreso */
+    CREATE TABLE IF NOT EXISTS entries (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      method TEXT NOT NULL DEFAULT 'manual',
+      created_at INTEGER NOT NULL,
+      FOREIGN KEY(user_id) REFERENCES users(id)
+    );
   `);
   sqliteReady = true;
 }
@@ -222,6 +231,8 @@ async function ensureSQLite() {
   if (!sqliteReady) await openSQLite();
   // Garantizar columnas opcionales inmediatamente después de abrir la BD
   ensureOptionalUserColumns();
+  // Asignar códigos a estudiantes que no lo tengan
+  try { await ensureStudentCodes(); } catch (e) { console.warn('No se pudieron asignar códigos a estudiantes:', e); }
 }
 
 // --- Helpers de migración de columnas ---
@@ -249,6 +260,16 @@ function ensureOptionalUserColumns() {
   } catch (e) {
     console.warn('No se pudieron asegurar columnas opcionales:', e);
   }
+}
+
+// Asignar código visible para estudiantes faltantes (formato UG-<id>)
+async function ensureStudentCodes() {
+  const rows = all("SELECT id, role, user_code FROM users WHERE role='estudiante' ORDER BY id ASC");
+  const toUpdate = rows.filter(r => !r.user_code || String(r.user_code).trim() === '');
+  for (const r of toUpdate) {
+    run('UPDATE users SET user_code=? WHERE id=?', [`UG-${r.id}`, r.id]);
+  }
+  if (toUpdate.length) await saveSQLite();
 }
 
 // Eliminamos el IIFE y aseguramos columnas explícitamente en ensureSQLite/initDB
@@ -306,6 +327,11 @@ async function seedIfEmpty() {
       'INSERT INTO users (name, email, role, password, created_at, status, career, semester, visit_reason) VALUES (?,?,?,?,?,?,?,?,?)',
       [u.name, u.email, u.role, hashed, Date.now(), u.status || 'activo', u.career || '', u.semester || '', '']
     );
+    // Asignar código visible si es estudiante
+    const id = scalar('SELECT last_insert_rowid() as id');
+    if (u.role === 'estudiante') {
+      run('UPDATE users SET user_code=? WHERE id=?', [`UG-${id}`, id]);
+    }
   }
   // Semilla de anuncios
   run('INSERT INTO announcements (title, body, created_at, author_id) VALUES (?,?,?,?)', [
@@ -351,6 +377,11 @@ export async function registerUser({ name, email, password, role, adminCode, car
   );
   await saveSQLite();
   const id = scalar('SELECT last_insert_rowid() as id');
+  // Asignar código visible si es estudiante
+  if (role === 'estudiante') {
+    run('UPDATE users SET user_code=? WHERE id=?', [`UG-${id}`, id]);
+    await saveSQLite();
+  }
   await logAction(id, 'user_created', `Usuario ${role} creado: ${name}`);
   window.dispatchEvent(new CustomEvent('dbchange', { detail: { type: 'users', id } }));
   return id;
@@ -359,7 +390,7 @@ export async function registerUser({ name, email, password, role, adminCode, car
 export async function getUserByEmail(email) {
   await ensureSQLite();
   email = String(email || '').trim().toLowerCase();
-  const rows = all('SELECT id, name, email, role, career, semester, status, visit_reason, created_at, last_login FROM users WHERE LOWER(email)=LOWER(?) LIMIT 1', [email]);
+  const rows = all('SELECT id, name, email, role, career, semester, status, visit_reason, user_code, created_at, last_login FROM users WHERE LOWER(email)=LOWER(?) LIMIT 1', [email]);
   const r = rows[0];
   if (!r) return null;
   return {
@@ -371,6 +402,29 @@ export async function getUserByEmail(email) {
     semester: r.semester || '',
     status: r.status || 'activo',
     visitReason: r.visit_reason || '',
+    userCode: r.user_code || '',
+    createdAt: new Date(r.created_at).toISOString(),
+    lastLogin: r.last_login ? new Date(r.last_login).toISOString() : null,
+  };
+}
+
+export async function getUserByCode(code) {
+  await ensureSQLite();
+  code = String(code || '').trim().toUpperCase();
+  if (!code) return null;
+  const rows = all('SELECT id, name, email, role, career, semester, status, visit_reason, user_code, created_at, last_login FROM users WHERE UPPER(user_code)=? LIMIT 1', [code]);
+  const r = rows[0];
+  if (!r) return null;
+  return {
+    id: r.id,
+    name: r.name,
+    email: r.email,
+    role: r.role,
+    career: r.career || '',
+    semester: r.semester || '',
+    status: r.status || 'activo',
+    visitReason: r.visit_reason || '',
+    userCode: r.user_code || '',
     createdAt: new Date(r.created_at).toISOString(),
     lastLogin: r.last_login ? new Date(r.last_login).toISOString() : null,
   };
@@ -378,7 +432,7 @@ export async function getUserByEmail(email) {
 
 export async function getUserById(id) {
   await ensureSQLite();
-  const rows = all('SELECT id, name, email, role, career, semester, status, visit_reason, created_at, last_login FROM users WHERE id=? LIMIT 1', [id]);
+  const rows = all('SELECT id, name, email, role, career, semester, status, visit_reason, user_code, created_at, last_login FROM users WHERE id=? LIMIT 1', [id]);
   const r = rows[0];
   if (!r) return null;
   return {
@@ -390,6 +444,7 @@ export async function getUserById(id) {
     semester: r.semester || '',
     status: r.status || 'activo',
     visitReason: r.visit_reason || '',
+    userCode: r.user_code || '',
     createdAt: new Date(r.created_at).toISOString(),
     lastLogin: r.last_login ? new Date(r.last_login).toISOString() : null,
   };
@@ -398,7 +453,7 @@ export async function getUserById(id) {
 export async function authenticateUser(email, password) {
   await ensureSQLite();
   email = String(email || '').trim().toLowerCase();
-  const rows = all('SELECT id, name, email, role, password, career, semester, status, visit_reason, created_at, last_login FROM users WHERE LOWER(email)=LOWER(?) LIMIT 1', [email]);
+  const rows = all('SELECT id, name, email, role, password, career, semester, status, visit_reason, user_code, created_at, last_login FROM users WHERE LOWER(email)=LOWER(?) LIMIT 1', [email]);
   const r = rows[0];
   if (!r) throw new Error('Usuario no encontrado.');
   const hashed = await hashPassword(password || '');
@@ -415,6 +470,7 @@ export async function authenticateUser(email, password) {
     semester: r.semester || '',
     status: r.status || 'activo',
     visitReason: r.visit_reason || '',
+    userCode: r.user_code || '',
     createdAt: new Date(r.created_at).toISOString(),
     lastLogin: new Date().toISOString(),
   };
@@ -422,7 +478,7 @@ export async function authenticateUser(email, password) {
 
 export async function listUsers() {
   await ensureSQLite();
-  const rows = all('SELECT id, name, email, role, career, semester, status, visit_reason, created_at, last_login FROM users ORDER BY id ASC');
+  const rows = all('SELECT id, name, email, role, career, semester, status, visit_reason, user_code, created_at, last_login FROM users ORDER BY id ASC');
   return rows.map(r => ({
     id: r.id,
     name: r.name,
@@ -432,6 +488,7 @@ export async function listUsers() {
     semester: r.semester || '',
     status: r.status || 'activo',
     visitReason: r.visit_reason || '',
+    userCode: r.user_code || '',
     createdAt: new Date(r.created_at).toISOString(),
     lastLogin: r.last_login ? new Date(r.last_login).toISOString() : null,
   }));
@@ -448,7 +505,8 @@ export async function updateUser(id, data) {
     career: 'career',
     semester: 'semester',
     status: 'status',
-    visitReason: 'visit_reason'
+    visitReason: 'visit_reason',
+    userCode: 'user_code'
   };
   const sets = [];
   const params = [];
@@ -688,8 +746,8 @@ export async function getUsersByRole(role, filters = {}) {
   if (filters.status) { conds.push('status = ?'); params.push(filters.status); }
   if (filters.career && role === 'estudiante') { conds.push('career = ?'); params.push(filters.career); }
   if (filters.semester && role === 'estudiante') { conds.push('semester = ?'); params.push(filters.semester); }
-  const rows = all(`SELECT id, name, email, role, career, semester, status, visit_reason, created_at, last_login FROM users WHERE ${conds.join(' AND ')} ORDER BY id ASC`, params);
-  return rows.map(r => ({ id: r.id, name: r.name, email: r.email, role: r.role, career: r.career || '', semester: r.semester || '', status: r.status || 'activo', visitReason: r.visit_reason || '', createdAt: new Date(r.created_at).toISOString(), lastLogin: r.last_login ? new Date(r.last_login).toISOString() : null }));
+  const rows = all(`SELECT id, name, email, role, career, semester, status, visit_reason, user_code, created_at, last_login FROM users WHERE ${conds.join(' AND ')} ORDER BY id ASC`, params);
+  return rows.map(r => ({ id: r.id, name: r.name, email: r.email, role: r.role, career: r.career || '', semester: r.semester || '', status: r.status || 'activo', visitReason: r.visit_reason || '', userCode: r.user_code || '', createdAt: new Date(r.created_at).toISOString(), lastLogin: r.last_login ? new Date(r.last_login).toISOString() : null }));
 }
 
 // Función para eliminar usuario (con logs)
@@ -743,8 +801,32 @@ export async function resetDatabase() {
     DELETE FROM logs;
     DELETE FROM sessions;
     DELETE FROM tasks;
+    DELETE FROM entries;
   `);
   await saveSQLite();
   await seedIfEmpty();
   window.dispatchEvent(new CustomEvent('dbchange', { detail: { type: 'reset' } }));
+}
+
+// --- Ingresos (entries) ---
+export async function registerEntry(userId, method = 'manual') {
+  await ensureSQLite();
+  run('INSERT INTO entries (user_id, method, created_at) VALUES (?,?,?)', [userId, String(method||'manual'), Date.now()]);
+  await saveSQLite();
+  try { await logAction(userId, 'entry_registered', `Ingreso por ${method}`); } catch {}
+  const id = scalar('SELECT last_insert_rowid() as id');
+  return id;
+}
+
+export async function listEntriesByUser(userId, limit = 20) {
+  await ensureSQLite();
+  const rows = all('SELECT id, user_id, method, created_at FROM entries WHERE user_id=? ORDER BY created_at DESC LIMIT '+Number(limit||20), [userId]);
+  return rows.map(r => ({ id: r.id, userId: r.user_id, method: r.method || 'manual', createdAt: new Date(r.created_at).toISOString() }));
+}
+
+export async function getLastEntryForUser(userId) {
+  await ensureSQLite();
+  const rows = all('SELECT id, created_at FROM entries WHERE user_id=? ORDER BY created_at DESC LIMIT 1', [userId]);
+  const r = rows[0];
+  return r ? new Date(r.created_at).toISOString() : null;
 }

@@ -1,4 +1,4 @@
-import { logAction, getUserStats, listUsers, updateUser, deleteUser, listReservas, getUserById, getUserByEmail, registerUser, getLogs, listTasks, createTask, updateTask, deleteTask, migrateLocalTasksToSQLite, exportSQLite, importSQLite } from '../js/db.js';
+import { logAction, getUserStats, listUsers, updateUser, deleteUser, listReservas, getUserById, getUserByEmail, getUserByCode, registerEntry, registerUser, getLogs, listTasks, createTask, updateTask, deleteTask, migrateLocalTasksToSQLite, exportSQLite, importSQLite } from '../js/db.js';
 import { altListTasks, altCreateTask, altUpdateTask, altDeleteTask, altReplaceAllTasks, altExportSQLite, altImportSQLite } from '../js/alt_db.js';
 
 export function render() {
@@ -783,9 +783,9 @@ export function mount({ currentUser, navigate, showToast } = {}) {
       user = await getUserById(Number(m[1]));
       if (user) return user;
     }
-    const allUsers = await listUsers();
-    const arr = allUsers.filter(u => (u.userCode || '').toLowerCase() === code);
-    return arr[0] || null;
+    user = await getUserByCode(code.toUpperCase());
+    if (user) return user;
+    return null;
   };
 
   const processEntry = async (value, source = 'manual') => {
@@ -794,6 +794,7 @@ export function mount({ currentUser, navigate, showToast } = {}) {
       if (typeof showToast === 'function') showToast('Código no reconocido. Prueba con correo o ID.', 'error', 'Registro');
       return;
     }
+    try { await registerEntry(user.id, source); } catch (e) { console.warn('Error registrando ingreso:', e); }
     await logAction(user.id, 'entry_registered', `Ingreso por ${source}`);
     if (typeof showToast === 'function') showToast(`Ingreso registrado: ${user.name}`, 'success', 'Registro');
     closeEntryModal();
@@ -1308,6 +1309,7 @@ export function mount({ currentUser, navigate, showToast } = {}) {
               <th>Nombre</th>
               <th>Correo</th>
               <th>Rol</th>
+              <th>Código</th>
               <th>Estado</th>
               <th>Carrera</th>
               <th>Semestre</th>
@@ -1377,6 +1379,7 @@ export function mount({ currentUser, navigate, showToast } = {}) {
               <td>${u.name||''}</td>
               <td>${u.email||''}</td>
               <td>${roleLabel(u.role)}</td>
+              <td><span class="chip chip--code">${(u.userCode||'')}</span></td>
               <td><span class="chip ${statusCls}">${u.status||''}</span></td>
               <td><span class="chip chip--career">${(u.career||'Sin carrera')}</span></td>
               <td><span class="chip chip--semester">${(u.semester||'')}</span></td>

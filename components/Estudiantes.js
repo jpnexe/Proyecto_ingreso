@@ -1,4 +1,4 @@
-import { listAnnouncements } from '../js/db.js';
+import { listAnnouncements, listEntriesByUser, getLastEntryForUser } from '../js/db.js';
 
 export function render({ currentUser }) {
   return `
@@ -11,6 +11,9 @@ export function render({ currentUser }) {
                     <div id="student-profile">
                         <div style="margin-bottom: 12px;">
                             <strong>ID Estudiantil:</strong> ${currentUser?.id || '20231045'}
+                        </div>
+                        <div style="margin-bottom: 12px;">
+                            <strong>Código visible:</strong> <span id="student-code">${currentUser?.userCode || (currentUser?.id ? ('UG-'+currentUser.id) : 'UG-20231045')}</span>
                         </div>
                         <div style="margin-bottom: 12px;">
                             <strong>Semestre Actual:</strong> 4to Semestre
@@ -30,18 +33,18 @@ export function render({ currentUser }) {
                     </div>
                 </div>
                 
-                <!-- Schedule QR Card -->
+                <!-- Credencial de Ingreso (QR) -->
                 <div class="glass card">
-                    <div class="section-title">🕒 Horario Académico</div>
+                    <div class="section-title">📱 Credencial de Ingreso</div>
                     
                     <div style="text-align: center; margin-bottom: 20px;">
                         <div style="background: white; padding: 15px; border-radius: 10px; margin-bottom: 15px; display: inline-block;">
-                            <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=https://universidad.edu/horarios/${currentUser?.id || '20231045'}" 
-                                 alt="QR Horario" style="width: 120px; height: 120px;">
+                            <img id="student-qr-img" src="" alt="QR Ingreso" style="width: 160px; height: 160px;">
                         </div>
+                        <div style="margin-top:8px; font-size: 0.9em; color: #555;">Escanéalo en administración para registrar tu ingreso.</div>
                         <br>
                         <button class="btn btn-orange" onclick="downloadCredential()">
-                            📱 Descargar QR
+                            📲 Descargar credencial
                         </button>
                     </div>
                     
@@ -53,7 +56,7 @@ export function render({ currentUser }) {
                             </span>
                         </div>
                         <div class="small">
-                            Último registro: <strong>Hoy, 08:15 AM</strong>
+                            Último registro: <strong id="last-entry">—</strong>
                         </div>
                     </div>
                 </div>
@@ -62,47 +65,7 @@ export function render({ currentUser }) {
                 <div class="glass card">
                     <div class="section-title">📋 Historial de Ingreso</div>
                     
-                    <div style="max-height: 300px; overflow-y: auto;">
-                        <div style="margin-bottom: 15px; padding: 12px; background: rgba(255, 127, 80, 0.1); border-left: 4px solid var(--orange); border-radius: 8px;">
-                            <div style="display: flex; align-items: center; margin-bottom: 5px;">
-                                <span style="background: var(--orange); color: white; padding: 4px 8px; border-radius: 50%; margin-right: 10px; font-size: 12px;">📥</span>
-                                <strong>Entrada registrada</strong>
-                            </div>
-                            <div class="small">Hoy, 08:15 AM</div>
-                        </div>
-                        
-                        <div style="margin-bottom: 15px; padding: 12px; background: rgba(52, 152, 219, 0.1); border-left: 4px solid var(--blue); border-radius: 8px;">
-                            <div style="display: flex; align-items: center; margin-bottom: 5px;">
-                                <span style="background: var(--blue); color: white; padding: 4px 8px; border-radius: 50%; margin-right: 10px; font-size: 12px;">📤</span>
-                                <strong>Salida registrada</strong>
-                            </div>
-                            <div class="small">Ayer, 17:30 PM</div>
-                        </div>
-                        
-                        <div style="margin-bottom: 15px; padding: 12px; background: rgba(255, 127, 80, 0.1); border-left: 4px solid var(--orange); border-radius: 8px;">
-                            <div style="display: flex; align-items: center; margin-bottom: 5px;">
-                                <span style="background: var(--orange); color: white; padding: 4px 8px; border-radius: 50%; margin-right: 10px; font-size: 12px;">📥</span>
-                                <strong>Entrada registrada</strong>
-                            </div>
-                            <div class="small">Ayer, 08:20 AM</div>
-                        </div>
-                        
-                        <div style="margin-bottom: 15px; padding: 12px; background: rgba(52, 152, 219, 0.1); border-left: 4px solid var(--blue); border-radius: 8px;">
-                            <div style="display: flex; align-items: center; margin-bottom: 5px;">
-                                <span style="background: var(--blue); color: white; padding: 4px 8px; border-radius: 50%; margin-right: 10px; font-size: 12px;">📤</span>
-                                <strong>Salida registrada</strong>
-                            </div>
-                            <div class="small">Lunes, 18:05 PM</div>
-                        </div>
-                        
-                        <div style="margin-bottom: 15px; padding: 12px; background: rgba(255, 127, 80, 0.1); border-left: 4px solid var(--orange); border-radius: 8px;">
-                            <div style="display: flex; align-items: center; margin-bottom: 5px;">
-                                <span style="background: var(--orange); color: white; padding: 4px 8px; border-radius: 50%; margin-right: 10px; font-size: 12px;">📥</span>
-                                <strong>Entrada registrada</strong>
-                            </div>
-                            <div class="small">Lunes, 08:10 AM</div>
-                        </div>
-                    </div>
+                    <div id="entry-history" style="max-height: 300px; overflow-y: auto;"></div>
                 </div>
             </div>
             
@@ -179,6 +142,10 @@ export function mount({ currentUser, navigate, toast }) {
   // Configurar funciones globales
   window.downloadCredential = downloadCredential;
   window.editProfile = editProfile;
+
+  // Poblar credencial y historial de ingresos
+  populateStudentCredentials(currentUser);
+  loadEntryHistory(currentUser);
 }
 
 
@@ -236,6 +203,52 @@ function downloadCredential() {
   
   // Mostrar mensaje de confirmación
   alert('📱 Descarga iniciada. Tu credencial estudiantil se está descargando.');
+}
+
+function populateStudentCredentials(currentUser) {
+  try {
+    const code = (currentUser?.userCode) || (currentUser?.id ? `UG-${currentUser.id}` : 'UG-0000');
+    const codeEl = document.getElementById('student-code');
+    if (codeEl) codeEl.textContent = code;
+    const img = document.getElementById('student-qr-img');
+    if (img) img.src = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(code)}`;
+    const lastEl = document.getElementById('last-entry');
+    if (lastEl && currentUser?.id) {
+      getLastEntryForUser(currentUser.id).then(ts => {
+        lastEl.textContent = ts ? new Date(ts).toLocaleString('es-ES') : '—';
+      }).catch(()=>{});
+    }
+  } catch (e) { /* noop */ }
+}
+
+async function loadEntryHistory(currentUser) {
+  const wrap = document.getElementById('entry-history');
+  if (!wrap || !currentUser?.id) return;
+  try {
+    const list = await listEntriesByUser(currentUser.id, 50);
+    if (!list.length) {
+      wrap.innerHTML = '<div class="small" style="padding: 12px; color:#666;">Sin registros de ingreso aún.</div>';
+      return;
+    }
+    wrap.innerHTML = list.map(e => {
+      const isIn = (e.method||'manual') !== 'salida';
+      const color = isIn ? 'var(--orange)' : 'var(--blue)';
+      const bg = isIn ? 'rgba(255, 127, 80, 0.1)' : 'rgba(52, 152, 219, 0.1)';
+      const icon = isIn ? '📥' : '📤';
+      const label = isIn ? 'Entrada registrada' : 'Salida registrada';
+      const when = new Date(e.createdAt).toLocaleString('es-ES');
+      return `
+        <div style="margin-bottom: 15px; padding: 12px; background: ${bg}; border-left: 4px solid ${color}; border-radius: 8px;">
+          <div style="display: flex; align-items: center; margin-bottom: 5px;">
+            <span style="background: ${color}; color: white; padding: 4px 8px; border-radius: 50%; margin-right: 10px; font-size: 12px;">${icon}</span>
+            <strong>${label}</strong>
+          </div>
+          <div class="small">${when}</div>
+        </div>`;
+    }).join('');
+  } catch (e) {
+    wrap.innerHTML = '<div class="small" style="padding: 12px; color:#e74c3c;">Error cargando historial.</div>';
+  }
 }
 
 // Función para editar perfil
