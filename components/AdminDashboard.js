@@ -429,6 +429,7 @@ export function mount({ currentUser, navigate, showToast } = {}) {
                 <th>Nombre</th>
                 <th>Correo</th>
                 <th>Rol</th>
+                <th>Código</th>
                 <th>Estado</th>
                 <th>Carrera</th>
                 <th>Semestre</th>
@@ -501,6 +502,17 @@ export function mount({ currentUser, navigate, showToast } = {}) {
                 <div id="visitor-fields" class="visitor-only">
                   <label>Motivo de la visita</label>
                   <input type="text" id="edit-user-visit-reason" placeholder="Motivo..." />
+                </div>
+              </div>
+              <div class="code-qr-panel" style="display:flex; align-items:flex-start; gap:16px; margin-top:12px;">
+                <div style="display:flex; flex-direction:column; gap:6px;">
+                  <label>Código único</label>
+                  <span id="edit-user-code" class="chip chip--code">—</span>
+                </div>
+                <div style="display:flex; flex-direction:column; gap:6px;">
+                  <label>QR</label>
+                  <img id="edit-user-qr" alt="QR del usuario" style="width:120px;height:120px;border-radius:8px;border:1px solid rgba(255,255,255,0.12);display:none;" />
+                  <span class="muted small">Escanéalo para registrar ingreso</span>
                 </div>
               </div>
               <p id="user-edit-error" class="form-error"></p>
@@ -1255,6 +1267,20 @@ export function mount({ currentUser, navigate, showToast } = {}) {
       if (visitReasonEl) visitReasonEl.value = (u.visitReason || '').trim();
       if (visitorFields) visitorFields.style.display = roleEl.value === 'visitante' ? 'grid' : 'none';
       if (adminFieldsEl) adminFieldsEl.style.display = 'none';
+      // Código y QR
+      const codeEl = document.getElementById('edit-user-code');
+      const qrEl = document.getElementById('edit-user-qr');
+      const codeVal = (u.userCode||'').trim() || (u.role === 'estudiante' ? `UG-${u.id}` : (u.role === 'visitante' ? `UV-${u.id}` : ''));
+      if (codeEl) codeEl.textContent = codeVal || '—';
+      if (qrEl) {
+        if (codeVal) {
+          qrEl.src = `https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(codeVal)}`;
+          qrEl.style.display = 'block';
+        } else {
+          qrEl.src = '';
+          qrEl.style.display = 'none';
+        }
+      }
       modal.classList.remove('hidden');
     };
 
@@ -1321,6 +1347,8 @@ export function mount({ currentUser, navigate, showToast } = {}) {
               <th>Nombre</th>
               <th>Correo</th>
               <th>Rol</th>
+              <th>Código</th>
+              <th>QR</th>
               <th>Estado</th>
               <th>Motivo de la visita</th>
               <th style="width:140px">Acciones</th>
@@ -1390,11 +1418,14 @@ export function mount({ currentUser, navigate, showToast } = {}) {
             </tr>`;
         } else if (roleFilter === 'visitante') {
           const motivo = ((u.visitReason || reasonByUser[u.id] || '')).trim() || '—';
+          const codeVal = (u.userCode||'').trim() || `UV-${u.id}`;
           return `
             <tr data-id="${u.id}">
               <td>${u.name||''}</td>
               <td>${u.email||''}</td>
               <td>${roleLabel(u.role)}</td>
+              <td><span class="chip chip--code">${codeVal}</span></td>
+              <td><img alt="QR" style="width:64px;height:64px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);" src="https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${encodeURIComponent(codeVal)}" /></td>
               <td><span class="chip ${statusCls}">${u.status||''}</span></td>
               <td><span class="chip chip--reason">${motivo}</span></td>
               <td>
@@ -1548,6 +1579,10 @@ export function mount({ currentUser, navigate, showToast } = {}) {
         studentFields.style.display = roleEl.value === 'estudiante' ? 'grid' : 'none';
         if (visitorFields) visitorFields.style.display = roleEl.value === 'visitante' ? 'grid' : 'none';
         if (adminFieldsEl) adminFieldsEl.style.display = (roleEl.value === 'admin') ? 'grid' : 'none';
+        const codeEl = document.getElementById('edit-user-code');
+        const qrEl = document.getElementById('edit-user-qr');
+        if (codeEl) codeEl.textContent = '—';
+        if (qrEl) { qrEl.src=''; qrEl.style.display='none'; }
         modal.classList.remove('hidden');
       });
     }

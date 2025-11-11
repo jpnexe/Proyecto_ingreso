@@ -1,0 +1,196 @@
+/* Estilos específicos para el horario y distribución del componente de Estudiantes */
+
+.uniguajira-students-container {
+  background: var(--bg-container, rgba(255, 255, 255, 0.12));
+  backdrop-filter: blur(12px);
+  border-radius: 25px;
+  box-shadow: var(--shadow, 0 10px 35px rgba(31, 38, 135, 0.4));
+  border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.2));
+  width: 95%;
+  max-width: 1300px;
+  margin: 2rem auto;
+  position: relative;
+  z-index: 1;
+  overflow: hidden;
+  -webkit-background-clip: padding-box;
+  background-clip: padding-box;
+  padding: 1.5rem;
+}
+.uniguajira-students-container::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  border-radius: inherit;
+  -webkit-background-clip: padding-box;
+  background-clip: padding-box;
+  background:
+    radial-gradient(circle at 12% 18%, rgba(52, 152, 219, 0.18) 0%, transparent 45%),
+    radial-gradient(circle at 85% 22%, rgba(255, 127, 80, 0.18) 0%, transparent 48%),
+    radial-gradient(circle at 30% 80%, rgba(46, 204, 113, 0.18) 0%, transparent 42%);
+}
+
+.students-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  border-radius: 16px;
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg);
+  margin-bottom: 1rem;
+}
+.toolbar-actions { display:flex; gap:8px; }
+.breadcrumbs { font-weight:600; }
+
+.students-layout {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 1.25rem;
+  position: relative;
+}
+.students-layout::before { display: none; }
+.student-profile-card { border-radius: 16px; }
+.academic-info-card { border-radius: 16px; }
+.quick-access-card { border-radius: 16px; }
+.schedule-card { border-radius: 16px; margin-top: 1rem; }
+.profile-row { margin-bottom: 12px; }
+.credential-center { text-align: center; margin-bottom: 10px; }
+.qr-wrap { background: white; padding: 15px; border-radius: 12px; display: inline-block; }
+.status-card { padding: 15px; margin-top: 12px; border-radius: 12px; }
+.status-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.entry-history { max-height: 300px; overflow-y: auto; }
+
+@media (max-width: 960px) {
+  .students-layout { grid-template-columns: 1fr; }
+  .students-layout::before { display: none; }
+}
+
+.muted_small {
+  margin: 10px;
+
+}
+
+
+
+/* Horario Semanal estilizado */
+.schedule-wrap { overflow-x: auto; }
+.schedule-table {
+  width: 100%;
+  border-collapse: collapse;
+  border-radius: 12px;
+  overflow: hidden;
+}
+.schedule-table thead th {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02));
+  border-bottom: 1px solid var(--glass-border);
+  padding: 10px 12px;
+  text-align: center;
+}
+.schedule-table tbody td {
+  padding: 12px;
+  border-bottom: 1px solid var(--glass-border);
+  text-align: center;
+  vertical-align: middle;
+}
+.schedule-table tbody tr:nth-child(even) { background: rgba(255,255,255,0.03); }
+.schedule-table tbody tr:hover { background: rgba(255,255,255,0.06); }
+.schedule-table tbody td:first-child { font-weight: 600; color: var(--text-primary); }
+
+/* Chips de cursos en el horario */
+.course-chip {
+  display: inline-block;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  line-height: 1;
+  background: linear-gradient(180deg, rgba(52,152,219,0.18), rgba(52,152,219,0.08));
+  border: 1px solid rgba(52,152,219,0.35);
+  color: var(--text-primary);
+}
+.course-chip.alt {
+  background: linear-gradient(180deg, rgba(231,126,34,0.18), rgba(231,126,34,0.08));
+  border-color: rgba(231,126,34,0.35);
+}
+.course-chip.blue {
+  background: linear-gradient(180deg, rgba(64,129,172,0.18), rgba(64,129,172,0.08));
+  border-color: rgba(64,129,172,0.35);
+}
+.course-chip.green {
+  background: linear-gradient(180deg, rgba(46,204,113,0.18), rgba(46,204,113,0.08));
+  border-color: rgba(46,204,113,0.35);
+}
+
+/* ===== Mejoras de navbar: clima compacto, botón salir y switch de tema ===== */
+.weather-widget { display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:14px; background: var(--glass-bg); border: 1px solid var(--glass-border); backdrop-filter: blur(10px); box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+.weather-widget.weather-compact { gap:6px; padding:6px 8px; border-radius:12px; }
+.weather-select { min-width:95px; font-size:12px; padding:6px 8px; border-radius:10px; }
+.weather-card { display:inline-flex; align-items:center; gap:6px; font-size:12px; color: var(--text-primary); }
+.weather-card .badge { display:inline-block; padding:4px 8px; border-radius:999px; background: rgba(52,152,219,0.18); border:1px solid rgba(52,152,219,0.35); color: var(--text-primary); }
+.weather-card .cond { opacity:0.9; }
+.weather-card .wind { opacity:0.7; }
+
+/* Switch de tema dentro del navbar de estudiantes */
+.student-navbar .theme-switch { position: static; top:auto; right:auto; z-index:auto; margin-left:0.5rem; }
+.student-navbar .theme-switch label { padding:6px 10px; border-radius:999px; font-size:12px; }
+
+/* Botones del navbar general y salir */
+.btn { display:inline-flex; align-items:center; gap:6px; padding:8px 12px; border-radius:999px; border:1px solid var(--glass-border); background: var(--glass-bg); color: var(--text-primary); cursor:pointer; transition: all 0.2s ease; }
+.btn:hover { transform: translateY(-1px); }
+.btn-orange { border-color: rgba(255,127,80,0.4); background: linear-gradient(180deg, rgba(255,127,80,0.20), rgba(255,127,80,0.08)); }
+.btn-orange:hover { background: linear-gradient(180deg, rgba(255,127,80,0.30), rgba(255,127,80,0.14)); }
+.btn-logout { padding:10px 14px; border-radius:999px; border:1px solid rgba(255,127,80,0.35); background: linear-gradient(180deg, rgba(255,127,80,0.18), rgba(255,127,80,0.08)); color: var(--text-primary); font-weight:600; box-shadow:0 3px 10px rgba(255,127,80,0.18); }
+.btn-logout:hover { transform: translateY(-1px); background: linear-gradient(180deg, rgba(255,127,80,0.28), rgba(255,127,80,0.14)); box-shadow: 0 10px 22px rgba(255,127,80,0.22); border-color: rgba(255,127,80,0.55); }
+
+/* ===== Foto de perfil cuadrada en Información Académica ===== */
+.student-profile-grid {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 16px;
+  align-items: start;
+}
+
+.student-photo-square {
+  width: 120px;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: var(--card-bg, rgba(255, 255, 255, 0.06));
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+
+.student-profile-details {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+@media (max-width: 640px) {
+  .student-profile-grid { grid-template-columns: 1fr; }
+  .student-photo-square { width: 96px; height: 96px; }
+}
+
+/* Paneles con textura para encapsular contenido */
+.texture-pane {
+  position: relative;
+  border-radius: 14px;
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg);
+  padding: 12px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+}
+.texture-pane::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background-image: radial-gradient(rgba(255,255,255,0.06) 1px, transparent 1px);
+  background-size: 8px 8px;
+  opacity: 0.35;
+}

@@ -41,6 +41,13 @@ export function renderNavbar(currentUser, activeRoute) {
         ${currentUser ? `<span class="badge">${currentUser.name} · <span class="role-${currentUser.role}">${currentUser.role}</span></span>` : ''}
         ${currentUser ? `<button id="logout" class="btn btn-orange" title="Cerrar sesión">Salir</button>` : ''}
         <div id="weather"></div>
+        <div class="theme-switch">
+          <input type="checkbox" id="theme-toggle" />
+          <label for="theme-toggle" title="Alternar tema">
+            <span>Modo oscuro</span>
+            <div class="switch"></div>
+          </label>
+        </div>
       </nav>
       
       <!-- Menú móvil desplegable -->
@@ -54,6 +61,13 @@ export function renderNavbar(currentUser, activeRoute) {
           ${currentUser ? `<span class="badge">${currentUser.name} · <span class="role-${currentUser.role}">${currentUser.role}</span></span>` : ''}
           ${currentUser ? `<button id="logout-mobile" class="btn btn-orange" title="Cerrar sesión">Salir</button>` : ''}
           <div id="weather-mobile"></div>
+          <div class="theme-switch">
+            <input type="checkbox" id="theme-toggle-mobile" />
+            <label for="theme-toggle-mobile" title="Alternar tema">
+              <span>Modo oscuro</span>
+              <div class="switch"></div>
+            </label>
+          </div>
         </nav>
       </div>
     </div>
@@ -113,13 +127,10 @@ export function mountNavbar(currentUser, navigate, toast, activeRoute) {
   if (currentUser) {
     if (activeRoute === 'estudiantes') {
       mountStudentNavbar(currentUser, navigate, toast);
-      return;
     } else if (activeRoute === 'admin') {
       mountAdminNavbar(currentUser, navigate, toast);
-      return;
     } else if (activeRoute === 'visitantes') {
       mountVisitorNavbar(currentUser, navigate, toast);
-      return;
     }
   }
   
@@ -175,6 +186,31 @@ export function mountNavbar(currentUser, navigate, toast, activeRoute) {
   // Montar el clima en ambos contenedores
   mountWeather('weather');
   mountWeather('weather-mobile');
+  const weatherDesktop = document.getElementById('weather');
+  if (weatherDesktop) weatherDesktop.classList.add('weather-widget', 'weather-compact');
+  const weatherMobile = document.getElementById('weather-mobile');
+  if (weatherMobile) weatherMobile.classList.add('weather-widget', 'weather-compact');
+
+  // ===== Tema claro/oscuro =====
+  function applyTheme(theme) {
+    const root = document.documentElement;
+    root.setAttribute('data-theme', theme);
+    localStorage.setItem('theme', theme);
+  }
+  function initThemeToggleCommon(id) {
+    const toggle = document.getElementById(id);
+    if (!toggle) return;
+    const saved = localStorage.getItem('theme') || 'light';
+    document.documentElement.setAttribute('data-theme', saved);
+    toggle.checked = saved === 'dark';
+    toggle.addEventListener('change', (e) => {
+      applyTheme(e.target.checked ? 'dark' : 'light');
+    });
+  }
+  initThemeToggleCommon('theme-toggle');
+  initThemeToggleCommon('theme-toggle-mobile');
+  initThemeToggleCommon('theme-toggle-visitor');
+  initThemeToggleCommon('theme-toggle-student');
 }
 
 // Función para renderizar el navbar personalizado de estudiantes
@@ -194,7 +230,14 @@ function renderStudentNavbar(currentUser) {
             <p class="user-name">${currentUser.name}</p>
             <p class="user-role">${currentUser.role}</p>
           </div>
-          <div class="weather-widget" id="weather-student"></div>
+          <div class="weather-widget weather-compact" id="weather-student"></div>
+          <div class="theme-switch">
+            <input type="checkbox" id="theme-toggle-student" />
+            <label for="theme-toggle-student" title="Alternar tema">
+              <span>Modo oscuro</span>
+              <div class="switch"></div>
+            </label>
+          </div>
           <button id="logout-student" class="btn-logout">
             <span class="logout-icon">🚪</span>
             Salir
@@ -264,21 +307,6 @@ function renderVisitorNavbar(currentUser) {
         </div>
         
         <div class="visitor-controls">
-          <div class="nav-links">
-            <a href="#/visitantes/informacion" class="visitor-link">
-              <span class="icon">ℹ️</span>
-              Información
-            </a>
-            <a href="#/visitantes/eventos" class="visitor-link">
-              <span class="icon">📅</span>
-              Eventos
-            </a>
-            <a href="#/visitantes/contacto" class="visitor-link">
-              <span class="icon">📞</span>
-              Contacto
-            </a>
-          </div>
-          
           <div class="visitor-info">
             <div class="user-avatar visitor-avatar">
               ${currentUser.name.charAt(0).toUpperCase()}
@@ -288,6 +316,13 @@ function renderVisitorNavbar(currentUser) {
               <p class="user-role visitor-role">Visitante</p>
             </div>
             <div class="weather-widget" id="weather-visitor"></div>
+            <div class="theme-switch">
+              <input type="checkbox" id="theme-toggle-visitor" />
+              <label for="theme-toggle-visitor" title="Alternar tema">
+                <span>Modo oscuro</span>
+                <div class="switch"></div>
+              </label>
+            </div>
             <button id="logout-visitor" class="btn-logout visitor-logout">
               <span class="logout-icon">👋</span>
               Salir

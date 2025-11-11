@@ -1,4 +1,4 @@
-import { registerUser } from '../js/db.js';
+import { registerUser, getUserById } from '../js/db.js';
 
 export function render() {
     return `
@@ -280,15 +280,25 @@ export function mount({ navigate, showToast: showModal }) {
         try {
             console.log('Intentando registrar usuario:', { name, email, role: userType, adminCode });
             
-            await registerUser({ 
+            const newId = await registerUser({ 
                 name, 
                 email, 
                 password, 
                 role: userType, 
                 adminCode 
             });
-            
-            showModal('Usuario registrado correctamente', 'success');
+            // Recuperar el usuario para mostrar su código (UV/UG)
+            try {
+              const u = await getUserById(newId);
+              const code = (u && u.userCode) ? u.userCode : (userType === 'visitante' ? `UV-${newId}` : (userType === 'estudiante' ? `UG-${newId}` : ''));
+              if (code) {
+                showModal(`Usuario registrado correctamente. Tu código: ${code}`, 'success');
+              } else {
+                showModal('Usuario registrado correctamente', 'success');
+              }
+            } catch (_) {
+              showModal('Usuario registrado correctamente', 'success');
+            }
              
              // Limpiar formulario
              form.reset();

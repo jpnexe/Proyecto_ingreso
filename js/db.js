@@ -382,6 +382,11 @@ export async function registerUser({ name, email, password, role, adminCode, car
     run('UPDATE users SET user_code=? WHERE id=?', [`UG-${id}`, id]);
     await saveSQLite();
   }
+  // Asignar código visible si es visitante
+  if (role === 'visitante') {
+    run('UPDATE users SET user_code=? WHERE id=?', [`UV-${id}`, id]);
+    await saveSQLite();
+  }
   await logAction(id, 'user_created', `Usuario ${role} creado: ${name}`);
   window.dispatchEvent(new CustomEvent('dbchange', { detail: { type: 'users', id } }));
   return id;

@@ -1,4 +1,5 @@
 const cities = {
+  Maicao: { name: 'Maicao', lat: 11.384, lon: -72.243 },
   Bogota: { name: 'Bogotá', lat: 4.6097, lon: -74.0817 },
   Medellin: { name: 'Medellín', lat: 6.2518, lon: -75.5636 },
   Cali: { name: 'Cali', lat: 3.4516, lon: -76.5319 },
@@ -14,10 +15,10 @@ function template(cityKey, weather) {
   const label = typeof code === 'number' ? codeToLabel(code) : '—';
   return `
     <div class="weather-card">
-      <strong>${city.name}</strong>
+      <strong class="city">${city.name}</strong>
       <span class="badge">${temp ?? '—'}°C</span>
-      <span class="small">${label}</span>
-      <span class="small">Viento: ${wind ?? '—'} km/h</span>
+      <span class="small cond">${label}</span>
+      <span class="small wind">${wind ?? '—'} km/h</span>
     </div>
   `;
 }
@@ -48,8 +49,8 @@ export function mountWeather(containerId) {
   const container = document.getElementById(containerId);
   if (!container) return;
   const select = document.createElement('select');
-  select.className = 'input';
-  select.style.maxWidth = '180px';
+  select.className = 'input weather-select';
+  select.style.maxWidth = '110px';
   select.title = 'Ciudad';
   for (const key of Object.keys(cities)) {
     const opt = document.createElement('option');
@@ -74,6 +75,6 @@ export function mountWeather(containerId) {
   }
 
   select.addEventListener('change', update);
-  select.value = 'Bogota';
+  select.value = 'Maicao';
   update();
 }
