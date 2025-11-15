@@ -12,6 +12,10 @@ import sys
 import os
 from datetime import datetime
 
+# Configuración de cuenta Git
+GIT_USERNAME = "David109754"
+GIT_EMAIL = "ovettovar79@gmail.com"
+
 def ejecutar_comando(comando, mostrar_salida=True):
     """
     Ejecuta un comando en la terminal y retorna el resultado
@@ -57,6 +61,13 @@ def verificar_git():
         return False
     
     print("✅ Git verificado correctamente")
+    
+    # Configurar datos de usuario Git
+    print("\n🔧 Configurando datos de usuario Git...")
+    ejecutar_comando(f'git config user.name "{GIT_USERNAME}"', mostrar_salida=False)
+    ejecutar_comando(f'git config user.email "{GIT_EMAIL}"', mostrar_salida=False)
+    print(f"✅ Usuario configurado: {GIT_USERNAME} ({GIT_EMAIL})")
+    
     return True
 
 def verificar_cambios():

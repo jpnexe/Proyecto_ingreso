@@ -33,7 +33,8 @@ Un sistema web moderno para la gestión de usuarios, reservas y servicios acadé
 - **CSS3**: Estilos avanzados con glass morphism
 - **JavaScript ES6+**: Lógica de aplicación moderna
 - **CSS Grid & Flexbox**: Layout responsivo
- - **BarcodeDetector API**: Escaneo de códigos QR (Chrome/Edge)
+- **BarcodeDetector API**: Escaneo de códigos QR (Chrome/Edge)
+- **Chart.js**: Visualización de gráficos interactivos
 
 ### Base de Datos
  - **SQLite en navegador (sql.js)**: Persistencia local con archivo SQLite guardado en IndexedDB
@@ -57,26 +58,32 @@ Uni_proyec_dev/
 │   ├── Navbar.js           # Barra de navegación
 │   └── Weather.js          # Componente del clima
 ├── js/                   # Lógica de la aplicación
- │   ├── app.js             # Aplicación principal y router
- │   └── db.js              # Gestión de base de datos (SQLite con sql.js)
+│   ├── app.js             # Aplicación principal y router
+│   ├── db.js              # Gestión de base de datos (SQLite con sql.js)
+│   ├── alt_db.js          # Base de datos alternativa (compatibilidad)
+│   └── charts.js          # Visualización de gráficos interactivos
 ├── css/                  # Estilos CSS
 │   ├── admin-dashboard.css # Estilos del panel de administración
+│   ├── schedule-styles.css # Estilos del calendario/horarios
 │   └── styles.css         # Hoja de estilos principal
- ├── img/                  # Recursos de imágenes
-  │   ├── logo uniguajira.png
-  │   ├── IMG_20230503_162416.jpg
-  │   └── Image_fx (58).jpg
+├── img/                  # Recursos de imágenes
+│   ├── logo uniguajira.png
+│   ├── IMG_20230503_162416.jpg
+│   └── Image_fx (58).jpg
 ├── data/                 # Persistencia local (SQLite)
 │   └── dashboard.sqlite   # Base de datos principal
 ├── config/               # Scripts utilitarios
-│   ├── iniciar_proyecto.bat
-│   ├── iniciar_proyecto.py
-│   ├── git_upload.py
-│   └── git_update.py
- ├── index.html            # Página principal
+│   ├── iniciar_proyecto.bat  # Script para iniciar (Windows)
+│   ├── iniciar_proyecto.py   # Script para iniciar (Python)
+│   ├── git_upload.py         # Script para subir a Git
+│   ├── git_update.py         # Script para actualizar desde Git
+│   ├── iniciar_ngrok.py      # Script para tunelización ngrok
+│   └── INSTRUCCIONES_GIT_SCRIPT.md # Documentación de scripts
+├── index.html            # Página principal
 ├── vite.config.js        # Configuración de Vite
 ├── package.json          # Scripts y dependencias
- └── README.md            # Documentación del proyecto
+├── responsive_test.html  # Pruebas de diseño responsivo
+└── README.md            # Documentación del proyecto
 ```
 
 ## 🚀 Instalación y Configuración
@@ -125,8 +132,16 @@ Uni_proyec_dev/
 - **Gestión de usuarios**: editar, actualizar roles
 - **Filtrado y búsqueda** de usuarios
 - **KPIs visuales** por tipo de usuario
- - **Registrar ingreso (QR/Código)**: Modal para escaneo QR o ingreso manual `UG-<id>`
- - **Columna "Código"** en la tabla de estudiantes: visualiza `UG-<id>` por alumno
+- **Registrar ingreso (QR/Código)**: Modal para escaneo QR o ingreso manual `UG-<id>`
+- **Columna "Código"** en la tabla de estudiantes: visualiza `UG-<id>` por alumno
+- **Gráficos interactivos**:
+  - Registros diarios por rol
+  - Distribución de estudiantes por carrera
+  - Gráficos mini de resumen
+- **Sidebar navegable** con múltiples secciones: Buscar, Inicio, Reportes, Estadísticas, Mensajes, Calendario, Usuarios, Ajustes
+- **Notificaciones en tiempo real** con historial
+- **Modo oscuro/claro** para el panel
+- **Exportación/Importación de datos** desde la base de datos
 
 ### 🎓 Portal de Estudiantes
 - **Visualización de anuncios** académicos
@@ -224,17 +239,23 @@ Uni_proyec_dev/
 
 - `registerUser()`: Registro de nuevos usuarios
 - `authenticateUser()`: Autenticación de usuarios
- - `listUsers()`: Listar todos los usuarios
- - `updateUser()`: Actualizar información de usuario
- - `getUserStats()`: Obtener estadísticas de usuarios
- - `createReserva()`: Crear nueva reserva
- - `listReservas()`: Listar reservas por usuario
- - `listAnnouncements()`: Obtener anuncios
- - `getUserByCode(code)`: Buscar usuario por código visible `UG-<id>`
- - `registerEntry(userId, method)`: Registrar ingreso (`qr` o `manual`)
- - `listEntriesByUser(userId, limit)`: Listar ingresos por usuario
- - `getLastEntryForUser(userId)`: Obtener el último registro de ingreso
- - `exportSQLite()` / `importSQLite(blob)`: Exportar/Importar la base de datos
+- `listUsers()`: Listar todos los usuarios
+- `updateUser()`: Actualizar información de usuario
+- `getUserStats()`: Obtener estadísticas de usuarios
+- `createReserva()`: Crear nueva reserva
+- `listReservas()`: Listar reservas por usuario
+- `listAnnouncements()`: Obtener anuncios
+- `getUserByCode(code)`: Buscar usuario por código visible `UG-<id>`
+- `registerEntry(userId, method)`: Registrar ingreso (`qr` o `manual`)
+- `listEntriesByUser(userId, limit)`: Listar ingresos por usuario
+- `getLastEntryForUser(userId)`: Obtener el último registro de ingreso
+- `getDailyEntryStats()`: Estadísticas de ingresos diarios por rol
+- `exportSQLite()` / `importSQLite(blob)`: Exportar/Importar la base de datos
+- `logAction()`: Registrar acciones de administración
+- `getLogs()`: Obtener historial de acciones
+- **Funciones alternativas** (en `alt_db.js` para compatibilidad):
+  - `altListTasks()`, `altCreateTask()`, `altUpdateTask()`, `altDeleteTask()`
+  - `altReplaceAllTasks()`, `altExportSQLite()`, `altImportSQLite()`
 
 ## 🎨 Diseño y Estilos
 
@@ -306,22 +327,25 @@ Notas:
 - **Componentes modulares**: Cada vista es un componente independiente
 - **Gestión de estado**: Estado global para usuario actual
 - **Event-driven**: Comunicación entre componentes via eventos
- - **Dev server**: Vite (scripts en `package.json`)
- - **Persistencia**: SQLite (sql.js) almacenada en IndexedDB (`data/dashboard.sqlite`)
+- **Dev server**: Vite (scripts en `package.json`)
+- **Persistencia**: SQLite (sql.js) almacenada en IndexedDB (`data/dashboard.sqlite`)
+- **Visualización**: Chart.js para gráficos interactivos
+
+### Scripts de Configuración (en `config/`)
+- **`iniciar_proyecto.bat` / `iniciar_proyecto.py`**: Inicia el servidor de desarrollo Vite
+- **`git_update.py`**: Automatiza `git pull` con guardado de cambios locales
+- **`git_upload.py`**: Facilita `git push` con mensajes de commit
+- **`iniciar_ngrok.py`**: Configura túneles ngrok para acceso remoto
 
 ### Flujo de la Aplicación
 1. **Carga inicial**: `app.js` inicializa el router y la base de datos
 2. **Routing**: Sistema de rutas hash-based (`#/login`, `#/registro`, etc.)
 3. **Renderizado**: Componentes se renderizan dinámicamente
 4. **Interactividad**: Event listeners se configuran en `mount()`
+5. **Gráficos**: Chart.js genera visualizaciones en el panel de administración
 
 ### Validaciones Implementadas
 - **Email**: Formato válido requerido
- 
-### Consideraciones
-- Los estudiantes reciben automáticamente un `user_code` (`UG-<id>`) si no lo tienen.
-- La columna "Código" es visible para administradores en la tabla de estudiantes.
-- El portal de estudiantes muestra su QR y el historial de ingresos.
 - **Contraseñas**: Mínimo 6 caracteres, confirmación requerida
 - **Roles**: Validación de código de administrador
 - **Reservas**: Prevención de duplicados en mismo horario
@@ -332,17 +356,21 @@ Notas:
 - **Responsive**: CSS Grid y Flexbox para layouts adaptativos
 - **Accesibilidad**: Etiquetas semánticas y navegación por teclado
 - **Performance**: Carga lazy de componentes y optimización de assets
+- **Gráficos interactivos**: Chart.js con gradientes y animaciones
+- **Base de datos dual**: Soporte para sql.js (primaria) y Dexie.js (alternativa)
 
 ## 🚀 Próximas Mejoras
 
 - [ ] Sistema de notificaciones push
 - [ ] Integración con API externa
-- [ ] Modo oscuro/claro
-- [ ] Exportación de datos
+- [ ] Modo oscuro/claro (en desarrollo en AdminDashboard)
+- [ ] Exportación de datos a PDF/Excel
 - [ ] Sistema de roles más granular
-- [ ] Integración con calendario
+- [ ] Integración con calendario avanzado
 - [ ] Chat en tiempo real
 - [ ] Módulo de calificaciones
+- [ ] Sistema de tareas con prioridades
+- [ ] Análisis y reportes avanzados
 
 ## 📞 Soporte
 
@@ -354,3 +382,47 @@ Para soporte técnico o consultas sobre el sistema:
 ---
 
 **Desarrollado con 🤡 para la Universidad de La Guajira**
+
+---
+
+## 📝 Historial de Cambios Recientes
+
+### Versión Actual
+**Última actualización**: Noviembre 2025
+
+#### ✨ Nuevas Características
+- **Sistema de Gráficos Avanzado**: Integración de Chart.js para visualizaciones interactivas
+  - Gráficos de registros diarios por rol
+  - Distribución de estudiantes por carrera
+  - Mini gráficos de resumen
+- **Base de Datos Alternativa**: Módulo `alt_db.js` para compatibilidad
+  - Sistema de tareas con prioridades
+  - Soporte para Dexie.js como alternativa
+- **Scripts de Automatización Mejorados**:
+  - `git_update.py`: Actualización automática con guardado de cambios locales
+  - `git_upload.py`: Subida simplificada a repositorio
+  - `iniciar_ngrok.py`: Tunelización remota
+- **Panel Administrativo Ampliado**:
+  - Barra lateral navegable con múltiples secciones
+  - Notificaciones en tiempo real
+  - Botón de modo oscuro/claro
+  - Vista mejorada de usuarios y estadísticas
+- **Persistencia Mejorada**:
+  - Exportación/Importación completa de base de datos
+  - Sincronización IndexedDB mejorada
+  - Soporte para múltiples fuentes de datos
+
+#### 🐛 Correcciones
+- Mejora en la gestión de roles y permisos
+- Optimización de consultas a base de datos
+- Mejora en la responsividad del panel administrativo
+
+#### 📦 Dependencias Actualizadas
+- `sql.js`: ^1.8.0 (SQLite en navegador)
+- `vite`: ^5.3.1 (Servidor de desarrollo)
+
+#### 🔧 Cambios Técnicos
+- Refactorización de componentes para mejor modularidad
+- Mejora en la arquitectura de enrutamiento
+- Optimización de carga de CSS y JS
+- Mejora en la validación de formularios
