@@ -221,7 +221,7 @@ async function loadEntryHistory(currentUser) {
   try {
     const list = await listEntriesByUser(currentUser.id, 50);
     if (!list.length) {
-      wrap.innerHTML = '<div class="small" style="padding: 12px; color:#666;">Sin registros de ingreso aún.</div>';
+      wrap.innerHTML = '<div class="small" style="padding: 12px;">Sin registros de ingreso aún.</div>';
       return;
     }
     wrap.innerHTML = list.map(e => {

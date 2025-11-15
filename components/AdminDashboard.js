@@ -1,4 +1,4 @@
-import { logAction, getUserStats, listUsers, updateUser, deleteUser, listReservas, getUserById, getUserByEmail, getUserByCode, registerEntry, registerUser, getLogs, listTasks, createTask, updateTask, deleteTask, migrateLocalTasksToSQLite, exportSQLite, importSQLite } from '../js/db.js';
+import { logAction, getUserStats, listUsers, updateUser, deleteUser, listReservas, getUserById, getUserByEmail, getUserByCode, registerEntry, registerUser, getLogs, listTasks, createTask, updateTask, deleteTask, migrateLocalTasksToSQLite, exportSQLite, importSQLite, getDailyEntryStats } from '../js/db.js';
 import { altListTasks, altCreateTask, altUpdateTask, altDeleteTask, altReplaceAllTasks, altExportSQLite, altImportSQLite } from '../js/alt_db.js';
 
 export function render() {
@@ -313,7 +313,7 @@ export function mount({ currentUser, navigate, showToast } = {}) {
     estadisticas: () => `
       <section class="charts-grid">
         <div class="chart-card"><div class="chart-header"><h3>Usuarios activos por rol</h3></div><canvas id="users-stats-chart"></canvas></div>
-        <div class="chart-card"><div class="chart-header"><h3>Actividad semanal</h3></div><canvas id="activity-stats-chart"></canvas></div>
+        <div class="chart-card"><div class="chart-header"><h3>Registros diarios (ingresos)</h3></div><canvas id="activity-stats-chart"></canvas></div>
       </section>
     `,
     mensajes: () => `
@@ -940,10 +940,24 @@ export function mount({ currentUser, navigate, showToast } = {}) {
       data: { labels: ['Visitantes','Estudiantes','Administradores'], datasets: [{ label: 'Usuarios', data: [baseStats.visitantes||0, baseStats.estudiantes||0, baseStats.admins||0], backgroundColor: ['#3498db','#2ecc71','#e74c3c'] }] },
       options: { responsive: true, maintainAspectRatio: true, aspectRatio: 1.6 }
     });
+    const entryStats = await getDailyEntryStats(7);
+    const labels = entryStats.labels.map(s => new Date(s + 'T00:00:00').toLocaleDateString('es-ES', { weekday: 'short' }));
     new Chart(activityCanvas.getContext('2d'), {
       type: 'line',
-      data: { labels: ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'], datasets: [{ label: 'Sesiones', data: [40,55,60,48,70,30,25], borderColor: '#33374c', tension: 0.4 }] },
-      options: { responsive: true, maintainAspectRatio: true, aspectRatio: 1.8 }
+      data: {
+        labels,
+        datasets: [
+          { label: 'Estudiantes', data: entryStats.estudiantes, borderColor: '#2ecc71', backgroundColor: 'rgba(46,204,113,0.2)', tension: 0.35 },
+          { label: 'Visitantes', data: entryStats.visitantes, borderColor: '#3498db', backgroundColor: 'rgba(52,152,219,0.2)', tension: 0.35 }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        aspectRatio: 1.8,
+        scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+        plugins: { legend: { position: 'top', align: 'start' } }
+      }
     });
   };
 

@@ -61,6 +61,11 @@ export default defineConfig({
     port: 5173,
     strictPort: true,
     open: false,
+    allowedHosts: ['.ngrok-free.app'],
+    hmr: {
+      clientPort: 443,
+      protocol: 'wss'
+    }
   },
   preview: {
     port: 5173,

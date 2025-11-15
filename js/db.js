@@ -835,3 +835,30 @@ export async function getLastEntryForUser(userId) {
   const r = rows[0];
   return r ? new Date(r.created_at).toISOString() : null;
 }
+
+export async function getDailyEntryStats(days = 7) {
+  await ensureSQLite();
+  const now = new Date();
+  const startMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const start = startMidnight.getTime() - (Math.max(1, days) - 1) * 86400000;
+  const rows = all(
+    'SELECT e.created_at AS ts, u.role AS role FROM entries e INNER JOIN users u ON u.id = e.user_id WHERE e.created_at >= ? ORDER BY e.created_at ASC',
+    [start]
+  );
+  const dayKey = (ms) => new Date(ms).toISOString().slice(0, 10);
+  const daysArr = Array.from({ length: Math.max(1, days) }, (_, i) => new Date(start + i * 86400000));
+  const idx = new Map(daysArr.map((d, i) => [dayKey(d.getTime()), i]));
+  const est = Array(daysArr.length).fill(0);
+  const vis = Array(daysArr.length).fill(0);
+  for (const r of rows) {
+    const k = dayKey(r.ts);
+    const i = idx.get(k);
+    if (i !== undefined) {
+      const role = String(r.role || '').toLowerCase();
+      if (role === 'estudiante') est[i]++;
+      else if (role === 'visitante') vis[i]++;
+    }
+  }
+  const labels = daysArr.map(d => d.toISOString().slice(0, 10));
+  return { labels, estudiantes: est, visitantes: vis };
+}
