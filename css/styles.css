@@ -2830,5 +2830,116 @@ body {
 
 @media (max-width: 900px) {
   .visitor-navbar .navbar-inner { grid-template-columns: 1fr; }
-  .visitor-navbar .visitor-controls { flex-wrap: wrap; justify-content: center; }
+.visitor-navbar .visitor-controls { flex-wrap: wrap; justify-content: center; }
+}
+/* Tarjetas base de vidrio reutilizables */
+.glass.card {
+  background: var(--glass-bg, rgba(255, 255, 255, 0.14));
+  border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.22));
+  backdrop-filter: blur(12px);
+  border-radius: 16px;
+  box-shadow: var(--shadow, 0 10px 35px rgba(31, 38, 135, 0.25));
+  padding: 1rem;
+}
+
+/* Utilitarios */
+.grid.cols-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+@media (max-width: 900px) {
+  .grid.cols-2 { grid-template-columns: 1fr; }
+}
+.mt-6 { margin-top: 1.5rem; }
+
+/* Badge y subtítulos */
+.badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  font-size: 0.85rem;
+}
+.form-subtitle {
+  color: var(--text-secondary, #c9d1d9);
+  margin-top: -0.25rem;
+  margin-bottom: 1rem;
+  opacity: 0.9;
+}
+
+/* Inputs coherentes con diseño de vidrio */
+.form .input,
+.form input.input,
+.form select.input,
+.form textarea.input {
+  width: 100%;
+  padding: 0.8rem 1rem;
+  border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.22));
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.10);
+  color: var(--text-primary, #ffffff);
+}
+.form .label {
+  display: block;
+  margin-bottom: 0.4rem;
+}
+
+/* Botones para Visitantes */
+.btn.btn-outline {
+  background: transparent;
+  border-color: var(--glass-border, rgba(255, 255, 255, 0.22));
+}
+.btn.btn-blue {
+  border-color: rgba(52, 152, 219, 0.35);
+  background: linear-gradient(180deg, rgba(52,152,219,0.22), rgba(52,152,219,0.10));
+  color: #ffffff;
+}
+.btn.btn-green {
+  border-color: rgba(46, 204, 113, 0.35);
+  background: linear-gradient(180deg, rgba(46,204,113,0.22), rgba(46,204,113,0.10));
+  color: #ffffff;
+}
+.btn.btn-red {
+  border-color: rgba(231, 76, 60, 0.35);
+  background: linear-gradient(180deg, rgba(231,76,60,0.22), rgba(231,76,60,0.10));
+  color: #ffffff;
+}
+.button-icon { margin-right: 0.4rem; }
+
+/* Lista de reservas */
+.visitor-reservas-card .reservas-list .glass.card {
+  padding: 0.75rem 1rem;
+  border-left: 4px solid rgba(46, 204, 113, 0.45);
+}
+.visitor-reservas-card .reservas-list .small { opacity: 0.9; }
+
+/* Lugares recomendados */
+.lugares-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+.lugar-item {
+  border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.22));
+  border-radius: 14px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: var(--shadow, 0 10px 30px rgba(0, 0, 0, 0.12));
+}
+.lugar-img {
+  width: 100%;
+  height: 140px;
+  object-fit: cover;
+  display: block;
+}
+.lugar-info {
+  padding: 0.75rem 0.9rem;
+}
+.lugar-info h3 { margin: 0 0 4px 0; font-size: 1rem; }
+.lugar-info p { margin: 0; font-size: 0.9rem; opacity: 0.9; }
+
+/* Perfil de Visitante ajustes */
+.visitor-profile img {
+  background: #ffffff;
 }
