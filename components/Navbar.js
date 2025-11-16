@@ -303,31 +303,28 @@ function renderVisitorNavbar(currentUser) {
     <div class="visitor-navbar">
       <div class="navbar-inner">
         <div class="brand">
-          <div>Portal de Visitantes</div>
+          <div>Portal Visitantes</div>
         </div>
-        
-        <div class="visitor-controls">
-          <div class="visitor-info">
-            <div class="user-avatar visitor-avatar">
-              ${currentUser.name.charAt(0).toUpperCase()}
-            </div>
-            <div class="user-details">
-              <p class="user-name">${currentUser.name}</p>
-              <p class="user-role visitor-role">Visitante</p>
-            </div>
-            <div class="weather-widget" id="weather-visitor"></div>
-            <div class="theme-switch">
-              <input type="checkbox" id="theme-toggle-visitor" />
-              <label for="theme-toggle-visitor" title="Alternar tema">
-                <span>Modo oscuro</span>
-                <div class="switch"></div>
-              </label>
-            </div>
-            <button id="logout-visitor" class="btn-logout visitor-logout">
-              <span class="logout-icon">👋</span>
-              Salir
-            </button>
+        <div class="student-info">
+          <div class="user-avatar visitor-avatar">
+            ${currentUser.name.charAt(0).toUpperCase()}
           </div>
+          <div class="user-details">
+            <p class="user-name">${currentUser.name}</p>
+            <p class="user-role visitor-role">Visitante</p>
+          </div>
+          <div class="weather-widget weather-compact" id="weather-visitor"></div>
+          <div class="theme-switch">
+            <input type="checkbox" id="theme-toggle-visitor" />
+            <label for="theme-toggle-visitor" title="Alternar tema">
+              <span>Modo oscuro</span>
+              <div class="switch"></div>
+            </label>
+          </div>
+          <button id="logout-visitor" class="btn-logout visitor-logout">
+            <span class="logout-icon">👋</span>
+            Salir
+          </button>
         </div>
       </div>
     </div>

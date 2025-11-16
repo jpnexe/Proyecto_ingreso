@@ -1,4 +1,4 @@
-import { logAction, getUserStats, listUsers, updateUser, deleteUser, listReservas, getUserById, getUserByEmail, getUserByCode, registerEntry, registerUser, getLogs, listTasks, createTask, updateTask, deleteTask, migrateLocalTasksToSQLite, exportSQLite, importSQLite, getDailyEntryStats } from '../js/db.js';
+import { logAction, getUserStats, listUsers, updateUser, deleteUser, listReservas, getUserById, getUserByEmail, getUserByCode, registerEntry, registerExit, registerUser, getLogs, listTasks, createTask, updateTask, deleteTask, migrateLocalTasksToSQLite, exportSQLite, importSQLite, getDailyEntryStats, getEntryExitStats, getHourlyEntryStats, listEntriesByUser, getLastEntryForUser } from '../js/db.js';
 import { altListTasks, altCreateTask, altUpdateTask, altDeleteTask, altReplaceAllTasks, altExportSQLite, altImportSQLite } from '../js/alt_db.js';
 
 export function render() {
@@ -69,6 +69,11 @@ export function render() {
             </div>
             <div class="kpi-card clickable" id="kpi-register-entry">
               <div class="kpi-header"><span>Registrar ingreso</span><i class="fas fa-qrcode"></i></div>
+              <div class="kpi-value">QR / Código</div>
+              <div class="kpi-change positive">Nuevo</div>
+            </div>
+            <div class="kpi-card clickable" id="kpi-register-exit">
+              <div class="kpi-header"><span>Registrar salida</span><i class="fas fa-sign-out-alt"></i></div>
               <div class="kpi-value">QR / Código</div>
               <div class="kpi-change positive">Nuevo</div>
             </div>
@@ -312,8 +317,11 @@ export function mount({ currentUser, navigate, showToast } = {}) {
     `,
     estadisticas: () => `
       <section class="charts-grid">
-        <div class="chart-card"><div class="chart-header"><h3>Usuarios activos por rol</h3></div><canvas id="users-stats-chart"></canvas></div>
+        <div class="chart-card"><div class="chart-header"><h3>Usuarios por rol</h3></div><canvas id="users-stats-chart"></canvas></div>
         <div class="chart-card"><div class="chart-header"><h3>Registros diarios (ingresos)</h3></div><canvas id="activity-stats-chart"></canvas></div>
+        <div class="chart-card"><div class="chart-header"><h3>Entradas vs salidas (7 días)</h3></div><canvas id="entry-exit-chart"></canvas></div>
+        <div class="chart-card"><div class="chart-header"><h3>Ingresos por hora (7 días)</h3></div><canvas id="hourly-entry-chart"></canvas></div>
+        <div class="chart-card"><div class="chart-header"><h3>Estado de usuarios por rol</h3></div><canvas id="status-by-role-chart"></canvas></div>
       </section>
     `,
     mensajes: () => `
@@ -332,21 +340,29 @@ export function mount({ currentUser, navigate, showToast } = {}) {
       <section class="calendar-section chart-card">
         <div class="chart-header"><h3>Tareas</h3></div>
         <div class="calendar-board">
-          <div class="tasks-column">
-            <div class="tasks-top">
-              <input type="search" id="task-search" placeholder="Buscar" />
-              <div class="segmented" role="tablist">
-                <button class="seg-btn active" data-filter="todo">Por hacer</button>
-                <button class="seg-btn" data-filter="in_progress">En progreso</button>
-                <button class="seg-btn" data-filter="done">Completadas</button>
-              </div>
-              <button id="task-add-btn" class="btn btn-primary btn-sm" title="Añadir tarea"><i class="fas fa-plus"></i> Añadir</button>
+        <div class="tasks-column">
+          <div class="tasks-top">
+            <input type="search" id="task-search" placeholder="Buscar" />
+            <div class="segmented" role="tablist">
+              <button class="seg-btn active" data-filter="todo">Por hacer</button>
+              <button class="seg-btn" data-filter="in_progress">En progreso</button>
+              <button class="seg-btn" data-filter="done">Completadas</button>
             </div>
-            <div id="tasks-list" class="tasks-list"></div>
+            <button id="task-add-btn" class="btn btn-primary btn-sm" title="Añadir tarea"><i class="fas fa-plus"></i> Añadir</button>
           </div>
+          <div id="mini-calendar" class="mini-calendar">
+            <div class="mc-header">
+              <button id="mc-prev" class="btn btn-sm" title="Mes anterior">‹</button>
+              <span id="mc-month" class="mc-month"></span>
+              <button id="mc-next" class="btn btn-sm" title="Mes siguiente">›</button>
+            </div>
+            <div id="mc-grid" class="mc-grid" aria-label="Mini calendario"></div>
+          </div>
+          <div id="tasks-list" class="tasks-list"></div>
+        </div>
           <div class="task-detail-column">
-            <div class="task-detail">
-              <h3>Tarea</h3>
+          <div class="task-detail">
+            <h3>Tarea</h3>
               <label class="detail-label">Descripción</label>
               <input id="detail-title" type="text" placeholder="Título de la tarea" />
               <div class="detail-row">
@@ -386,6 +402,7 @@ export function mount({ currentUser, navigate, showToast } = {}) {
               <div class="detail-actions">
                 <button id="detail-new" class="btn">Nueva</button>
                 <button id="detail-save" class="btn">Guardar</button>
+                <button id="detail-complete" class="btn">Completar</button>
                 <button id="detail-delete" class="btn btn-danger">Eliminar</button>
               </div>
             </div>
@@ -520,6 +537,49 @@ export function mount({ currentUser, navigate, showToast } = {}) {
             <div class="modal-footer">
               <button id="user-edit-save" class="btn">Guardar cambios</button>
               <button id="user-edit-delete" class="btn btn-danger">Eliminar usuario</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="student-detail-modal" class="modal hidden">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h3>Detalle de estudiante</h3>
+              <button class="modal-close" id="student-detail-close">&times;</button>
+            </div>
+            <div class="modal-body">
+              <div class="form-grid">
+                <label>Nombre</label>
+                <div id="sd-name"></div>
+                <label>Correo</label>
+                <div id="sd-email"></div>
+                <label>Rol</label>
+                <div id="sd-role"></div>
+                <label>Código</label>
+                <div id="sd-code" class="chip chip--code"></div>
+                <label>Estado</label>
+                <div id="sd-status"></div>
+                <label>Carrera</label>
+                <div id="sd-career"></div>
+                <label>Semestre</label>
+                <div id="sd-semester"></div>
+                <label>Creado</label>
+                <div id="sd-created"></div>
+                <label>Último acceso</label>
+                <div id="sd-lastLogin"></div>
+              </div>
+              <div class="form-grid" style="margin-top:12px;">
+                <label>Total ingresos</label>
+                <div id="sd-total"></div>
+                <label>Último ingreso</label>
+                <div id="sd-lastEntry"></div>
+                <label>Promedio diario</label>
+                <div id="sd-avgDay"></div>
+              </div>
+              <div style="margin-top:12px;">
+                <h4 style="margin:0 0 8px 0; font-size:14px;">Últimos ingresos</h4>
+                <ul id="sd-entries" style="max-height:200px; overflow:auto; padding-left:18px;"></ul>
+              </div>
             </div>
           </div>
         </div>
@@ -812,6 +872,18 @@ export function mount({ currentUser, navigate, showToast } = {}) {
     closeEntryModal();
   };
 
+  const processExit = async (value, source = 'manual') => {
+    const user = await findUserByCode(value);
+    if (!user) {
+      if (typeof showToast === 'function') showToast('Código no reconocido. Prueba con correo o ID.', 'error', 'Registro');
+      return;
+    }
+    try { await registerExit(user.id, { auto: false }); } catch (e) { console.warn('Error registrando salida:', e); }
+    await logAction(user.id, 'exit_registered', `Salida por ${source}`);
+    if (typeof showToast === 'function') showToast(`Salida registrada: ${user.name}`, 'success', 'Registro');
+    closeEntryModal();
+  };
+
   const closeEntryModal = () => {
     try {
       if (scanTimer) { clearInterval(scanTimer); scanTimer = null; }
@@ -897,9 +969,89 @@ export function mount({ currentUser, navigate, showToast } = {}) {
     }
   };
 
+  const openExitModal = async () => {
+    const overlay = document.createElement('div');
+    overlay.className = 'entry-overlay';
+    overlay.innerHTML = `
+      <div class="entry-dialog">
+        <div class="entry-header">
+          <h3>Registrar salida</h3>
+          <button class="entry-close" aria-label="Cerrar">&times;</button>
+        </div>
+        <div class="entry-tabs">
+          <button class="tab-btn active" data-tab="qr">Escanear QR</button>
+          <button class="tab-btn" data-tab="code">Ingresar código</button>
+        </div>
+        <div id="qr-section-exit" class="entry-section">
+          <video id="qr-video-exit" autoplay playsinline class="qr-video"></video>
+          <p id="qr-status-exit" class="entry-hint">Apunta la cámara al código QR.</p>
+        </div>
+        <div id="code-section-exit" class="entry-section hidden">
+          <div class="entry-row">
+            <input id="exit-code-input" type="text" placeholder="Código o correo" />
+            <button id="exit-code-btn" class="btn">Registrar</button>
+          </div>
+          <p class="entry-hint">Acepta correo, formatos como uid:123 o UG-123.</p>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+
+    const closeBtn = overlay.querySelector('.entry-close');
+    closeBtn.addEventListener('click', closeEntryModal);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) closeEntryModal(); });
+
+    const tabBtns = overlay.querySelectorAll('.tab-btn');
+    const qrSection = overlay.querySelector('#qr-section-exit');
+    const codeSection = overlay.querySelector('#code-section-exit');
+    tabBtns.forEach(btn => btn.addEventListener('click', () => {
+      tabBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const tab = btn.getAttribute('data-tab');
+      if (tab === 'qr') { qrSection.classList.remove('hidden'); codeSection.classList.add('hidden'); }
+      else { codeSection.classList.remove('hidden'); qrSection.classList.add('hidden'); }
+    }));
+
+    const codeBtn = overlay.querySelector('#exit-code-btn');
+    const codeInput = overlay.querySelector('#exit-code-input');
+    codeBtn.addEventListener('click', () => processExit(codeInput.value, 'manual'));
+
+    const status = overlay.querySelector('#qr-status-exit');
+    const video = overlay.querySelector('#qr-video-exit');
+    try {
+      if ('BarcodeDetector' in window) {
+        detector = new window.BarcodeDetector({ formats: ['qr_code'] });
+      }
+      qrStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      video.srcObject = qrStream;
+      await video.play();
+      if (!detector) {
+        status.textContent = 'Detector QR no soportado en este navegador. Usa el código.';
+        return;
+      }
+      status.textContent = 'Escaneando...';
+      scanTimer = setInterval(async () => {
+        try {
+          const codes = await detector.detect(video);
+          if (codes && codes.length) {
+            processExit(codes[0].rawValue, 'qr');
+          }
+        } catch (err) {
+          console.warn('Error detectando QR:', err);
+        }
+      }, 500);
+    } catch (err) {
+      status.textContent = 'No se pudo acceder a la cámara. Permisos o dispositivo.';
+    }
+  };
+
   const initEntryRegister = () => {
     const card = document.getElementById('kpi-register-entry');
     if (card) card.addEventListener('click', openEntryModal);
+  };
+  const initExitRegister = () => {
+    const card = document.getElementById('kpi-register-exit');
+    if (card) card.addEventListener('click', openExitModal);
   };
 
   // Ratios adaptativos según ancho de ventana para evitar que "crezcan" al reducir
@@ -933,12 +1085,15 @@ export function mount({ currentUser, navigate, showToast } = {}) {
   const initEstadisticasCharts = async () => {
     const usersCanvas = document.getElementById('users-stats-chart');
     const activityCanvas = document.getElementById('activity-stats-chart');
+    const entryExitCanvas = document.getElementById('entry-exit-chart');
+    const hourlyCanvas = document.getElementById('hourly-entry-chart');
+    const statusByRoleCanvas = document.getElementById('status-by-role-chart');
     if (!usersCanvas || !activityCanvas) return;
     const baseStats = await getUserStats();
     new Chart(usersCanvas.getContext('2d'), {
-      type: 'bar',
+      type: 'doughnut',
       data: { labels: ['Visitantes','Estudiantes','Administradores'], datasets: [{ label: 'Usuarios', data: [baseStats.visitantes||0, baseStats.estudiantes||0, baseStats.admins||0], backgroundColor: ['#3498db','#2ecc71','#e74c3c'] }] },
-      options: { responsive: true, maintainAspectRatio: true, aspectRatio: 1.6 }
+      options: { responsive: true, maintainAspectRatio: true, aspectRatio: 1.1, plugins: { legend: { position: 'bottom' } } }
     });
     const entryStats = await getDailyEntryStats(7);
     const labels = entryStats.labels.map(s => new Date(s + 'T00:00:00').toLocaleDateString('es-ES', { weekday: 'short' }));
@@ -951,14 +1106,38 @@ export function mount({ currentUser, navigate, showToast } = {}) {
           { label: 'Visitantes', data: entryStats.visitantes, borderColor: '#3498db', backgroundColor: 'rgba(52,152,219,0.2)', tension: 0.35 }
         ]
       },
-      options: {
-        responsive: true,
-        maintainAspectRatio: true,
-        aspectRatio: 1.8,
-        scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
-        plugins: { legend: { position: 'top', align: 'start' } }
-      }
+      options: { responsive: true, maintainAspectRatio: true, aspectRatio: 1.3, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }, plugins: { legend: { position: 'top', align: 'start' } } }
     });
+    if (entryExitCanvas) {
+      const exStats = await getEntryExitStats(7);
+      const exLabels = exStats.labels.map(s => new Date(s + 'T00:00:00').toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }));
+      new Chart(entryExitCanvas.getContext('2d'), {
+        type: 'bar',
+        data: { labels: exLabels, datasets: [ { label: 'Entradas', data: exStats.entries, backgroundColor: '#2ecc71' }, { label: 'Salidas', data: exStats.exits, backgroundColor: '#e74c3c' } ] },
+        options: { responsive: true, maintainAspectRatio: true, aspectRatio: 1.2, scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true, ticks: { precision: 0 } } }, plugins: { legend: { position: 'top' } } }
+      });
+    }
+    if (hourlyCanvas) {
+      const hStats = await getHourlyEntryStats(7);
+      const maxVal = Math.max(...hStats.entries, 1);
+      const colors = hStats.entries.map(v => `rgba(52,152,219,${0.25 + 0.55 * (v / maxVal)})`);
+      new Chart(hourlyCanvas.getContext('2d'), {
+        type: 'bar',
+        data: { labels: hStats.labels, datasets: [ { label: 'Ingresos por hora', data: hStats.entries, backgroundColor: colors } ] },
+        options: { responsive: true, maintainAspectRatio: true, aspectRatio: 1.2, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
+      });
+    }
+    if (statusByRoleCanvas) {
+      const users = await listUsers();
+      const roles = ['estudiante','visitante','admin'];
+      const activos = roles.map(r => users.filter(u => (u.role||'')===r && (u.status||'activo')==='activo').length);
+      const inactivos = roles.map(r => users.filter(u => (u.role||'')===r && (u.status||'activo')!=='activo').length);
+      new Chart(statusByRoleCanvas.getContext('2d'), {
+        type: 'bar',
+        data: { labels: ['Estudiantes','Visitantes','Administradores'], datasets: [ { label: 'Activo', data: activos, backgroundColor: '#2ecc71' }, { label: 'Inactivo', data: inactivos, backgroundColor: '#f1c40f' } ] },
+        options: { responsive: true, maintainAspectRatio: true, aspectRatio: 1.2, indexAxis: 'y', scales: { x: { stacked: true, beginAtZero: true, ticks: { precision: 0 } }, y: { stacked: true } }, plugins: { legend: { position: 'top' } } }
+      });
+    }
   };
 
   const initCalendarTasks = () => {
@@ -975,10 +1154,16 @@ export function mount({ currentUser, navigate, showToast } = {}) {
       comments: document.getElementById('detail-comments'),
       newBtn: document.getElementById('detail-new'),
       save: document.getElementById('detail-save'),
+      complete: document.getElementById('detail-complete'),
       del: document.getElementById('detail-delete'),
     };
     const addBtn = document.getElementById('task-add-btn');
     const assigneeList = document.getElementById('assignee-list');
+    const miniCalEl = document.getElementById('mini-calendar');
+    const mcMonthEl = document.getElementById('mc-month');
+    const mcGridEl = document.getElementById('mc-grid');
+    const mcPrevBtn = document.getElementById('mc-prev');
+    const mcNextBtn = document.getElementById('mc-next');
     if (!listEl || !searchEl || filterBtns.length === 0) return;
 
     let tasks = [];
@@ -1012,6 +1197,7 @@ export function mount({ currentUser, navigate, showToast } = {}) {
         const users = await listUsers();
         if (assigneeList) assigneeList.innerHTML = users.map(u => `<option value="${u.name} (${u.email})">`).join('');
       } catch {}
+      if (miniCalEl && mcMonthEl && mcGridEl) initMiniCalendar();
     };
 
     const badgeClass = (p) => {
@@ -1169,6 +1355,18 @@ export function mount({ currentUser, navigate, showToast } = {}) {
       if (currentUser && currentUser.id) await logAction(currentUser.id, 'task_saved', `Calendario: ${payload.title}`);
     });
 
+    if (detail.complete) detail.complete.addEventListener('click', async () => {
+      const idx = tasks.findIndex(x => x.id === selectedId);
+      if (idx < 0) return;
+      await updateTask(selectedId, { status: 'done' });
+      tasks = await listTasks();
+      try { if (isDualWrite()) await altReplaceAllTasks(tasks); } catch {}
+      renderList();
+      renderDetail();
+      if (typeof showToast === 'function') showToast('Tarea marcada como completada', 'success');
+      if (currentUser && currentUser.id) await logAction(currentUser.id, 'task_completed', `Calendario: ${tasks[idx].title}`);
+    });
+
     detail.del.addEventListener('click', async () => {
       const idx = tasks.findIndex(x => x.id === selectedId);
       if (idx < 0) return;
@@ -1218,6 +1416,8 @@ export function mount({ currentUser, navigate, showToast } = {}) {
     const titleEl = document.getElementById('user-edit-title');
     const adminCodeEl = document.getElementById('edit-user-admin-code');
     const adminFieldsEl = document.getElementById('admin-fields');
+    const studentDetailModal = document.getElementById('student-detail-modal');
+    const studentDetailClose = document.getElementById('student-detail-close');
 
     let isCreating = false;
 
@@ -1300,6 +1500,61 @@ export function mount({ currentUser, navigate, showToast } = {}) {
 
     const closeModal = () => {
       modal.classList.add('hidden');
+    };
+
+    const openStudentDetail = async (u) => {
+      if (!studentDetailModal) return;
+      const nameEl = document.getElementById('sd-name');
+      const emailEl = document.getElementById('sd-email');
+      const roleEl = document.getElementById('sd-role');
+      const codeEl = document.getElementById('sd-code');
+      const statusEl = document.getElementById('sd-status');
+      const careerEl = document.getElementById('sd-career');
+      const semesterEl = document.getElementById('sd-semester');
+      const createdEl = document.getElementById('sd-created');
+      const lastLoginEl = document.getElementById('sd-lastLogin');
+      const totalEl = document.getElementById('sd-total');
+      const lastEntryEl = document.getElementById('sd-lastEntry');
+      const avgDayEl = document.getElementById('sd-avgDay');
+      const entriesUl = document.getElementById('sd-entries');
+
+      const full = await getUserById(u.id);
+      if (nameEl) nameEl.textContent = full?.name || u.name || '';
+      if (emailEl) emailEl.textContent = full?.email || u.email || '';
+      if (roleEl) roleEl.textContent = roleLabel(full?.role || u.role);
+      const codeVal = (full?.userCode || u.userCode || '').trim() || (u.role === 'estudiante' ? `UG-${u.id}` : (u.role === 'visitante' ? `UV-${u.id}` : ''));
+      if (codeEl) codeEl.textContent = codeVal || '';
+      if (statusEl) statusEl.textContent = full?.status || u.status || '';
+      if (careerEl) careerEl.textContent = full?.career || u.career || 'Sin carrera';
+      if (semesterEl) semesterEl.textContent = full?.semester || u.semester || '';
+      if (createdEl) createdEl.textContent = full?.createdAt ? new Date(full.createdAt).toLocaleString() : '';
+      if (lastLoginEl) lastLoginEl.textContent = full?.lastLogin ? new Date(full.lastLogin).toLocaleString() : '—';
+
+      let entries = [];
+      try { entries = await listEntriesByUser(u.id, 50); } catch {}
+      const total = entries.length;
+      if (totalEl) totalEl.textContent = String(total);
+      let lastEntryIso = null;
+      try { lastEntryIso = await getLastEntryForUser(u.id); } catch {}
+      if (lastEntryEl) lastEntryEl.textContent = lastEntryIso ? new Date(lastEntryIso).toLocaleString() : '—';
+      const byDay = new Map();
+      entries.forEach(e => {
+        const k = new Date(e.createdAt).toISOString().slice(0,10);
+        byDay.set(k, (byDay.get(k)||0) + 1);
+      });
+      const daysCount = byDay.size || 1;
+      const avg = total ? (total / daysCount) : 0;
+      if (avgDayEl) avgDayEl.textContent = avg.toFixed(2);
+      if (entriesUl) {
+        const top = entries.slice(0, 12);
+        entriesUl.innerHTML = top.map(e => {
+          const d = new Date(e.createdAt);
+          const s = d.toLocaleString();
+          return `<li>${s} · ${e.method}</li>`;
+        }).join('');
+      }
+
+      studentDetailModal.classList.remove('hidden');
     };
 
     const refreshFilterOptions = () => {
@@ -1488,6 +1743,17 @@ export function mount({ currentUser, navigate, showToast } = {}) {
           }
         });
       });
+
+      if (roleFilter === 'estudiante') {
+        tbody.querySelectorAll('tr').forEach(tr => {
+          tr.addEventListener('click', async (e) => {
+            if (e.target.closest('button')) return;
+            const id = Number(tr.getAttribute('data-id'));
+            const user = usersCache.find(x => x.id === id) || await getUserById(id);
+            if (user) openStudentDetail(user);
+          });
+        });
+      }
     };
 
     // Guardar cambios (creación o edición)
@@ -1572,6 +1838,8 @@ export function mount({ currentUser, navigate, showToast } = {}) {
     });
     closeBtn.addEventListener('click', closeModal);
     modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+    if (studentDetailClose) studentDetailClose.addEventListener('click', () => { if (studentDetailModal) studentDetailModal.classList.add('hidden'); });
+    if (studentDetailModal) studentDetailModal.addEventListener('click', (e) => { if (e.target === studentDetailModal) studentDetailModal.classList.add('hidden'); });
 
     // Añadir nuevo usuario
     if (addBtn) {
@@ -1639,7 +1907,7 @@ export function mount({ currentUser, navigate, showToast } = {}) {
       sectionArea.innerHTML = tplFn();
       localStorage.setItem('adminLastSection', key);
       setActive(key);
-      if (key === 'inicio') { initInicioCharts(); initInicioData(); applyAdaptiveRatios(); initEntryRegister(); } else { salesChart = null; categoriesChart = null; dailyRegsChart = null; }
+      if (key === 'inicio') { initInicioCharts(); initInicioData(); applyAdaptiveRatios(); initEntryRegister(); initExitRegister(); } else { salesChart = null; categoriesChart = null; dailyRegsChart = null; }
       if (key === 'estadisticas') initEstadisticasCharts();
       if (key === 'reportes') initSystemLogs();
       if (key === 'calendario') initCalendarTasks();
@@ -1962,3 +2230,26 @@ export function mount({ currentUser, navigate, showToast } = {}) {
       });
     }
   };
+    let mcDate = new Date();
+    const initMiniCalendar = () => {
+      const renderMini = () => {
+        const y = mcDate.getFullYear();
+        const m = mcDate.getMonth();
+        mcMonthEl.textContent = mcDate.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+        const weekdays = ['L','M','X','J','V','S','D'];
+        mcGridEl.innerHTML = weekdays.map(w => `<div class="mc-weekday">${w}</div>`).join('');
+        const first = new Date(y, m, 1);
+        const startOffset = (first.getDay() + 6) % 7;
+        for (let i=0; i<startOffset; i++) mcGridEl.innerHTML += `<div class="mc-day outside"></div>`;
+        const daysInMonth = new Date(y, m+1, 0).getDate();
+        const today = new Date();
+        for (let d=1; d<=daysInMonth; d++) {
+          const isToday = today.getFullYear()===y && today.getMonth()===m && today.getDate()===d;
+          const cls = `mc-day${isToday?' today':''}`;
+          mcGridEl.innerHTML += `<button class="${cls}" data-day="${d}">${d}</button>`;
+        }
+      };
+      renderMini();
+      if (mcPrevBtn) mcPrevBtn.addEventListener('click', () => { mcDate.setMonth(mcDate.getMonth()-1); renderMini(); });
+      if (mcNextBtn) mcNextBtn.addEventListener('click', () => { mcDate.setMonth(mcDate.getMonth()+1); renderMini(); });
+    };

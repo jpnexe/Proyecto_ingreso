@@ -606,7 +606,7 @@ body {
 }
 
 .contact-info {
-  background: rgba(255, 255, 255, 0.57);
+  background: rgba(156, 156, 156, 0.57);
   border-radius: 15px;
   padding: 1.5rem;
   margin-top: 1rem;
@@ -1992,28 +1992,17 @@ body {
 
 /* ===== NAVBAR DE VISITANTES ===== */
 .visitor-navbar {
-  background: linear-gradient(135deg, #553e23c3 0%, #2ecc71 50%, #2d437e99 100%);
-  border: 2px solid rgba(255, 255, 255, 0.15);
-  border-radius: 25px;
-  margin: 15px 20px;
-  box-shadow: 
-    0 8px 32px rgba(39, 174, 96, 0.3),
-    0 4px 16px rgba(0, 0, 0, 0.2);
-  backdrop-filter: blur(10px);
-  position: relative;
-  overflow: hidden;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background-color: #a4a4a447;
+  backdrop-filter: blur(16px);
+  border-radius: 0px 0px 25px 25px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
-.visitor-navbar::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: linear-gradient(90deg, #2ecc71, #27ae60, #2ecc71);
-  animation: visitorGlow 3s ease-in-out infinite;
-}
+.visitor-navbar::before { display: none; }
 
 @keyframes visitorGlow {
   0%, 100% { opacity: 0.6; }
@@ -2022,16 +2011,18 @@ body {
 
 .visitor-navbar .navbar-inner {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 15px 25px;
+  justify-content: space-between;
+  padding: 16px 24px;
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
 .visitor-navbar .brand > div {
-  font-size: 1.4rem;
+  font-size: 1.1rem;
   font-weight: 700;
-  color: #ecf0f1;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  letter-spacing: 0.3px;
+  color: #0f172a;
 }
 
 .visitor-controls {
@@ -2078,9 +2069,9 @@ body {
 }
 
 .visitor-avatar {
-  background: linear-gradient(135deg, #2ecc71, #27ae60);
-  border: 3px solid rgba(46, 204, 113, 0.3);
-  box-shadow: 0 4px 12px rgba(46, 204, 113, 0.4);
+  background: linear-gradient(135deg, var(--orange), var(--blue));
+  border: 3px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
 }
 
 .visitor-avatar:hover {
@@ -2088,21 +2079,11 @@ body {
   box-shadow: 0 6px 20px rgba(46, 204, 113, 0.6);
 }
 
-.visitor-role {
-  color: #2ecc71 !important;
-  font-weight: 600;
-}
+.visitor-role { color: var(--muted) !important; font-weight: 600; }
 
-.visitor-logout {
-  background: linear-gradient(135deg, #2ecc71, #27ae60);
-  border: 2px solid rgba(46, 204, 113, 0.3);
-}
+.visitor-logout { background: rgba(255, 127, 80, 0.2); border: 1px solid rgba(255, 127, 80, 0.3); }
 
-.visitor-logout:hover {
-  background: linear-gradient(135deg, #27ae60, #229954);
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(46, 204, 113, 0.4);
-}
+.visitor-logout:hover { transform: translateY(-2px); background: rgba(255, 127, 80, 0.3); box-shadow: 0 8px 25px rgba(255, 127, 80, 0.25); border-color: rgba(255, 127, 80, 0.5); }
 
 /* ===== RESPONSIVE PARA NAVBARS DE ADMIN Y VISITANTES ===== */
 @media (max-width: 768px) {
@@ -2663,7 +2644,7 @@ body {
   display: block;
   font-size: 1rem;
   font-weight: 500;
-  color: #333;
+  color: #ffffff;
   margin-bottom: 0.5rem;
 }
 
@@ -2808,29 +2789,62 @@ body {
 .history-icon { background: var(--blue); color: #fff; padding: 4px 8px; border-radius: 50%; margin-right: 10px; font-size: 12px; }
 
 .visitor-navbar .navbar-inner {
-  display: grid;
-  grid-template-columns: 220px auto;
+  display: flex;
   align-items: center;
-  gap: 1rem;
-  padding: 0.75rem 1rem;
-  border-radius: 14px;
-  border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.2));
-  background: var(--glass-bg, rgba(255, 255, 255, 0.16));
+  justify-content: space-between;
+  padding: 16px 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+  border: none;
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
 }
 .visitor-navbar .brand { display: flex; align-items: center; font-weight: 700; color: var(--text-primary); }
 .visitor-navbar .visitor-controls { display: flex; justify-content: flex-end; align-items: center; gap: 1rem; }
 .visitor-navbar .nav-links { display: none; }
 .visitor-navbar .visitor-link { display: none; }
 .visitor-navbar .visitor-info { display: flex; align-items: center; gap: 0.75rem; }
-.visitor-navbar .btn-logout { border: 1px solid var(--glass-border); border-radius: 8px; padding: 8px 12px; background: transparent; color: var(--text-primary); cursor: pointer; }
+.visitor-navbar .btn-logout { border: 1px solid rgba(255, 127, 80, 0.3); border-radius: 18px; padding: 12px 18px; background: rgba(255, 127, 80, 0.2); color: #0f172a; cursor: pointer; box-shadow: 0 2px 8px rgba(255, 127, 80, 0.15); }
 .visitor-navbar .theme-switch { position: static; top: auto; right: auto; z-index: auto; margin-left: 0.5rem; display: inline-flex; }
 .visitor-navbar .theme-switch label { white-space: nowrap; }
-.visitor-navbar .weather-widget { min-width: 240px; flex: 0 0 auto; }
+.visitor-navbar .weather-widget { min-width: auto; flex: 0 0 auto; }
 .visitor-navbar .visitor-info { flex-wrap: nowrap; }
 
 @media (max-width: 900px) {
-  .visitor-navbar .navbar-inner { grid-template-columns: 1fr; }
-.visitor-navbar .visitor-controls { flex-wrap: wrap; justify-content: center; }
+  .visitor-navbar .navbar-inner {
+    padding: 12px 16px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .visitor-navbar .student-info {
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .visitor-navbar .user-details { display: none; }
+  .visitor-navbar .weather-widget {
+    order: -1;
+    flex: 1;
+    justify-content: center;
+    border-radius: 15px;
+    padding: 8px 12px;
+  }
+  .visitor-navbar .btn-logout {
+    padding: 10px 14px;
+    font-size: 0.9rem;
+    border-radius: 15px;
+  }
+}
+
+@media (max-width: 480px) {
+  .visitor-navbar {
+    margin: 8px 10px;
+    border-radius: 18px;
+  }
+  .visitor-navbar .brand > div { font-size: 1rem; }
+  .visitor-navbar .user-avatar { width: 40px; height: 40px; font-size: 16px; }
+  .visitor-navbar .weather-widget { border-radius: 12px; }
+  .visitor-navbar .btn-logout { border-radius: 12px; }
 }
 /* Tarjetas base de vidrio reutilizables */
 .glass.card {
@@ -2879,10 +2893,34 @@ body {
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.10);
   color: var(--text-primary, #ffffff);
+  caret-color: var(--text-primary, #ffffff);
 }
 .form .label {
   display: block;
   margin-bottom: 0.4rem;
+}
+
+.form .input:focus,
+.form input.input:focus,
+.form select.input:focus,
+.form textarea.input:focus {
+  outline: 2px solid rgba(52, 152, 219, 0.45);
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.18);
+  border-color: rgba(52, 152, 219, 0.45);
+}
+
+[data-theme="dark"] .form .input::placeholder,
+[data-theme="dark"] .form input.input::placeholder,
+[data-theme="dark"] .form select.input::placeholder,
+[data-theme="dark"] .form textarea.input::placeholder {
+  color: rgba(255, 255, 255, 0.80);
+}
+
+[data-theme="light"] .form .input::placeholder,
+[data-theme="light"] .form input.input::placeholder,
+[data-theme="light"] .form select.input::placeholder,
+[data-theme="light"] .form textarea.input::placeholder {
+  color: rgba(15, 23, 42, 0.75);
 }
 
 /* Botones para Visitantes */
@@ -2942,4 +2980,139 @@ body {
 /* Perfil de Visitante ajustes */
 .visitor-profile img {
   background: #ffffff;
+}
+
+/* Sección QR optimizada para móvil */
+.qr-section {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.qr-code {
+  width: 140px;
+  height: 140px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: #ffffff;
+  padding: 8px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+  transition: all 0.3s ease;
+}
+
+/* Responsive para móvil - QR más grande para escaneo fácil */
+@media (max-width: 768px) {
+  .qr-section {
+    align-items: center;
+    text-align: center;
+    width: 100%;
+  }
+  
+  .qr-code {
+    width: 200px;
+    height: 200px;
+    padding: 12px;
+    margin: 0 auto;
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+  }
+  
+  .qr-code:hover {
+    transform: scale(1.05);
+    box-shadow: 0 12px 40px rgba(0,0,0,0.35);
+  }
+  
+  /* Asegurar que el contenedor del perfil tenga espacio suficiente */
+  .visitor-profile {
+    padding: 1.5rem;
+  }
+  
+  /* Mejorar legibilidad en móvil */
+  .profile-row {
+    font-size: 1rem;
+    line-height: 1.5;
+  }
+  
+  .profile-row strong {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 0.9rem;
+    opacity: 0.8;
+  }
+  
+  /* Botón para ampliar QR en móvil */
+  .qr-fullscreen-btn {
+    margin-top: 8px;
+    font-size: 0.85rem;
+    padding: 6px 12px;
+  }
+}
+
+/* Ocultar botón de ampliar QR en pantallas grandes */
+@media (min-width: 769px) {
+  .qr-fullscreen-btn {
+    display: none;
+  }
+}
+
+/* Modal para QR en pantalla completa */
+.qr-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.9);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+
+.qr-modal.active {
+  display: flex;
+}
+
+.qr-modal-content {
+  background: white;
+  padding: 2rem;
+  border-radius: 20px;
+  text-align: center;
+  max-width: 90vw;
+  max-height: 90vh;
+}
+
+.qr-modal img {
+  width: 300px;
+  height: 300px;
+  margin: 1rem 0;
+}
+
+.qr-modal-close {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: rgba(255,255,255,0.2);
+  border: none;
+  color: white;
+  font-size: 1.5rem;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (max-width: 768px) {
+  .qr-modal-content {
+    padding: 1.5rem;
+  }
+  
+  .qr-modal img {
+    width: 250px;
+    height: 250px;
+  }
 }

@@ -1,4 +1,4 @@
-import { listAnnouncements, listEntriesByUser, getLastEntryForUser } from '../js/db.js';
+import { listAnnouncements, listEntriesByUser, getLastEntryForUser, ensureAutoExitForUser } from '../js/db.js';
 
 export function render({ currentUser }) {
   return `
@@ -129,7 +129,7 @@ export function render({ currentUser }) {
   `;
 }
 
-export function mount({ currentUser, navigate, toast }) {
+export async function mount({ currentUser, navigate, toast }) {
   // Cargar anuncios
   loadAnnouncements();
   
@@ -139,6 +139,9 @@ export function mount({ currentUser, navigate, toast }) {
 
   // Poblar credencial y historial de ingresos
   populateStudentCredentials(currentUser);
+  if (currentUser?.id) {
+    try { await ensureAutoExitForUser(currentUser.id); } catch {}
+  }
   loadEntryHistory(currentUser);
 }
 
@@ -225,17 +228,19 @@ async function loadEntryHistory(currentUser) {
       return;
     }
     wrap.innerHTML = list.map(e => {
-      const isIn = (e.method||'manual') !== 'salida';
-      const color = isIn ? 'var(--orange)' : 'var(--blue)';
-      const bg = isIn ? 'rgba(255, 127, 80, 0.1)' : 'rgba(52, 152, 219, 0.1)';
-      const icon = isIn ? '📥' : '📤';
-      const label = isIn ? 'Entrada registrada' : 'Salida registrada';
+      const method = String(e.method||'manual');
+      const isExit = method.startsWith('salida');
+      const color = isExit ? 'var(--blue)' : 'var(--orange)';
+      const bg = isExit ? 'rgba(52, 152, 219, 0.1)' : 'rgba(255, 127, 80, 0.1)';
+      const icon = isExit ? '📤' : '📥';
+      const baseLabel = isExit ? 'Salida registrada' : 'Entrada registrada';
+      const note = method === 'salida_auto' ? ' · No registró salida' : '';
       const when = new Date(e.createdAt).toLocaleString('es-ES');
       return `
         <div style="margin-bottom: 15px; padding: 12px; background: ${bg}; border-left: 4px solid ${color}; border-radius: 8px;">
           <div style="display: flex; align-items: center; margin-bottom: 5px;">
             <span style="background: ${color}; color: white; padding: 4px 8px; border-radius: 50%; margin-right: 10px; font-size: 12px;">${icon}</span>
-            <strong>${label}</strong>
+            <strong>${baseLabel}${note}</strong>
           </div>
           <div class="small">${when}</div>
         </div>`;

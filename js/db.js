@@ -862,3 +862,81 @@ export async function getDailyEntryStats(days = 7) {
   const labels = daysArr.map(d => d.toISOString().slice(0, 10));
   return { labels, estudiantes: est, visitantes: vis };
 }
+export async function getEntryExitStats(days = 7) {
+  await ensureSQLite();
+  const now = new Date();
+  const startMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const start = startMidnight.getTime() - (Math.max(1, days) - 1) * 86400000;
+  const rows = all('SELECT method, created_at FROM entries WHERE created_at >= ? ORDER BY created_at ASC', [start]);
+  const dayKey = (ms) => new Date(ms).toISOString().slice(0, 10);
+  const daysArr = Array.from({ length: Math.max(1, days) }, (_, i) => new Date(start + i * 86400000));
+  const idx = new Map(daysArr.map((d, i) => [dayKey(d.getTime()), i]));
+  const entries = Array(daysArr.length).fill(0);
+  const exits = Array(daysArr.length).fill(0);
+  for (const r of rows) {
+    const k = dayKey(r.created_at);
+    const i = idx.get(k);
+    if (i !== undefined) {
+      const m = String(r.method || 'manual');
+      if (m.startsWith('salida')) exits[i]++;
+      else entries[i]++;
+    }
+  }
+  const labels = daysArr.map(d => d.toISOString().slice(0, 10));
+  return { labels, entries, exits };
+}
+export async function getHourlyEntryStats(days = 7) {
+  await ensureSQLite();
+  const now = new Date();
+  const startMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const start = startMidnight.getTime() - (Math.max(1, days) - 1) * 86400000;
+  const rows = all('SELECT method, created_at FROM entries WHERE created_at >= ? ORDER BY created_at ASC', [start]);
+  const counts = Array(24).fill(0);
+  for (const r of rows) {
+    const m = String(r.method || 'manual');
+    if (m.startsWith('salida')) continue;
+    const h = new Date(r.created_at).getHours();
+    counts[h]++;
+  }
+  const labels = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'));
+  return { labels, entries: counts };
+}
+export async function registerExit(userId, { auto = false, at } = {}) {
+  await ensureSQLite();
+  const method = auto ? 'salida_auto' : 'salida';
+  const ts = at ? Number(at) : Date.now();
+  run('INSERT INTO entries (user_id, method, created_at) VALUES (?,?,?)', [userId, method, ts]);
+  await saveSQLite();
+  try { await logAction(userId, 'exit_registered', auto ? 'Salida automática (no registró salida)' : 'Salida registrada'); } catch {}
+  const id = scalar('SELECT last_insert_rowid() as id');
+  return id;
+}
+
+export async function ensureAutoExitForUser(userId) {
+  await ensureSQLite();
+  const rows = all('SELECT created_at, method FROM entries WHERE user_id=? ORDER BY created_at ASC', [userId]);
+  if (!rows.length) return 0;
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const byDay = new Map();
+  for (const r of rows) {
+    const k = new Date(r.created_at).toISOString().slice(0, 10);
+    if (!byDay.has(k)) byDay.set(k, []);
+    byDay.get(k).push(String(r.method || 'manual'));
+  }
+  let inserted = 0;
+  for (const [k, methods] of byDay.entries()) {
+    if (k >= todayKey) continue;
+    const hadEntry = methods.some(m => !String(m).startsWith('salida'));
+    const hadExit = methods.some(m => String(m).startsWith('salida'));
+    if (hadEntry && !hadExit) {
+      const parts = k.split('-');
+      const y = Number(parts[0]);
+      const m = Number(parts[1]) - 1;
+      const d = Number(parts[2]);
+      const endMs = new Date(y, m, d + 1).getTime() - 1000;
+      await registerExit(userId, { auto: true, at: endMs });
+      inserted++;
+    }
+  }
+  return inserted;
+}

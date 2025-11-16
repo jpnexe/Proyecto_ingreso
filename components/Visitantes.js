@@ -35,10 +35,13 @@ export function render({ currentUser }) {
                   ${currentUser?.userCode || (currentUser ? `UV-${currentUser.id}` : '—')}
                 </span>
               </div>
-              <div class="profile-row" style="display:flex; flex-direction:column; align-items:flex-start; gap:8px;">
+              <div class="profile-row qr-section">
                 <strong>Mi QR</strong>
-                <img alt="QR del visitante" style="width:140px;height:140px;border-radius:12px;border:1px solid rgba(255,255,255,0.12);"
-                  src="https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(currentUser?.userCode || (currentUser ? `UV-${currentUser.id}` : ''))}" />
+                <img class="qr-code" alt="QR del visitante"
+                  src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(currentUser?.userCode || (currentUser ? `UV-${currentUser.id}` : ''))}" />
+                <button class="btn btn-outline btn-sm qr-fullscreen-btn" onclick="showQRFullscreen()">
+                  📱 Ampliar QR
+                </button>
               </div>
               <button class="btn btn-blue full-width" onclick="editProfile()">
                 ✏️ Editar Información
@@ -169,6 +172,18 @@ export function render({ currentUser }) {
         </div>
       </div>
     </div>
+    
+    <!-- Modal QR Pantalla Completa -->
+    <div id="qr-modal" class="qr-modal">
+      <div class="qr-modal-content">
+        <button class="qr-modal-close" onclick="closeQRModal()">&times;</button>
+        <h3>Código QR de Visitante</h3>
+        <img id="qr-fullscreen" alt="QR Visitante" />
+        <p style="margin-top: 1rem; color: #666; font-size: 0.9rem;">
+          Escanea este código para registrar tu visita
+        </p>
+      </div>
+    </div>
   `;
 }
 
@@ -211,6 +226,40 @@ export function mount({ currentUser, navigate, showToast }) {
   }
 
   if (currentUser) loadReservas(currentUser.id);
+
+  // Función para mostrar QR en pantalla completa
+  window.showQRFullscreen = function() {
+    const qrModal = document.getElementById('qr-modal');
+    const qrImage = document.getElementById('qr-fullscreen');
+    const codeVal = currentUser?.userCode || (currentUser ? `UV-${currentUser.id}` : '');
+    
+    qrImage.src = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(codeVal)}`;
+    qrModal.classList.add('active');
+    
+    // Cerrar con ESC
+    document.addEventListener('keydown', closeQRModalOnEsc);
+    
+    // Cerrar al hacer clic fuera
+    qrModal.addEventListener('click', function(e) {
+      if (e.target === qrModal) {
+        closeQRModal();
+      }
+    });
+  };
+
+  // Función para cerrar modal QR
+  window.closeQRModal = function() {
+    const qrModal = document.getElementById('qr-modal');
+    qrModal.classList.remove('active');
+    document.removeEventListener('keydown', closeQRModalOnEsc);
+  };
+
+  // Cerrar modal con ESC
+  function closeQRModalOnEsc(event) {
+    if (event.key === 'Escape') {
+      closeQRModal();
+    }
+  };
 
   // Función para editar perfil
   window.editProfile = function() {
