@@ -615,6 +615,19 @@ export function mount({ currentUser, navigate, showToast } = {}) {
                 <h4 style="margin:0 0 8px 0; font-size:14px;">Últimos ingresos</h4>
                 <ul id="sd-entries" style="max-height:200px; overflow:auto; padding-left:18px;"></ul>
               </div>
+              <div style="margin-top:12px; display:flex; justify-content:flex-end;">
+                <button id="sd-advanced-btn" class="btn btn-sm">Estadísticas avanzadas</button>
+              </div>
+              <div id="sd-advanced" class="chart-card" style="display:none; margin-top:10px;">
+                <div class="chart-header"><h3 style="font-size:14px;">Actividad por día (14 días)</h3></div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin: 0 0 10px 0;">
+                  <div><strong>Total últimos 14 días:</strong> <span id="sd-adv-total">0</span></div>
+                  <div><strong>Día más activo:</strong> <span id="sd-adv-topday">—</span></div>
+                </div>
+                <div style="height:260px;">
+                  <canvas id="sd-adv-chart"></canvas>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -1618,6 +1631,12 @@ export function mount({ currentUser, navigate, showToast } = {}) {
       const avgDayEl = document.getElementById('sd-avgDay');
       const entriesUl = document.getElementById('sd-entries');
       const qrImg = document.getElementById('sd-qr');
+      const advBtn = document.getElementById('sd-advanced-btn');
+      const advWrap = document.getElementById('sd-advanced');
+      const advTotalEl = document.getElementById('sd-adv-total');
+      const advTopEl = document.getElementById('sd-adv-topday');
+      const advCanvas = document.getElementById('sd-adv-chart');
+      let advChart = null;
 
       const full = await getUserById(u.id);
       if (nameEl) nameEl.textContent = full?.name || u.name || '';
@@ -1657,6 +1676,44 @@ export function mount({ currentUser, navigate, showToast } = {}) {
           const s = d.toLocaleString();
           return `<li>${s} · ${e.method}</li>`;
         }).join('');
+      }
+
+      const pad2 = (n) => String(n).padStart(2, '0');
+      const localKey = (ms) => { const d = new Date(ms); return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`; };
+      const initAdvanced = () => {
+        if (!advWrap || !advCanvas) return;
+        advWrap.style.display = 'block';
+        const days = 14;
+        const now = new Date();
+        const startMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const start = startMidnight.getTime() - (days - 1) * 86400000;
+        const labels = Array.from({ length: days }, (_, i) => {
+          const d = new Date(start + i * 86400000);
+          return `${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+        });
+        const idx = new Map(Array.from({ length: days }, (_, i) => { const d = new Date(start + i * 86400000); return [localKey(d.getTime()), i]; }));
+        const counts = Array(days).fill(0);
+        entries.forEach(e => { const k = localKey(new Date(e.createdAt).getTime()); const i = idx.get(k); if (i !== undefined) counts[i]++; });
+        if (advTotalEl) advTotalEl.textContent = String(counts.reduce((a,b)=>a+b,0));
+        const maxIdx = counts.reduce((mi, v, i) => (v > counts[mi] ? i : mi), 0);
+        if (advTopEl) advTopEl.textContent = labels[maxIdx] || '—';
+        try { if (advChart && typeof advChart.destroy === 'function') advChart.destroy(); } catch {}
+        const ct = getChartTheme();
+        const ctx = advCanvas.getContext('2d');
+        advChart = new Chart(ctx, {
+          type: 'bar',
+          data: { labels, datasets: [{ label: 'Ingresos', data: counts, backgroundColor: 'rgba(99, 101, 241, 0.6)', borderColor: 'rgba(99, 101, 241, 0.85)', borderWidth: 1, borderRadius: 6 }] },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false }, tooltip: { backgroundColor: ct.tooltipBg, borderColor: ct.tooltipBorder, borderWidth: 1 } },
+            scales: { x: { grid: { display: false }, ticks: { color: ct.text } }, y: { beginAtZero: true, grid: { color: ct.grid }, ticks: { color: ct.text } } }
+          }
+        });
+      };
+      if (advBtn && !advBtn.dataset.bound) {
+        advBtn.dataset.bound = '1';
+        advBtn.addEventListener('click', () => { if (advWrap.style.display === 'none') initAdvanced(); else advWrap.style.display = 'none'; });
       }
 
       studentDetailModal.classList.remove('hidden'); document.body.classList.add('modal-open');
@@ -1952,7 +2009,7 @@ export function mount({ currentUser, navigate, showToast } = {}) {
     });
     closeBtn.addEventListener('click', closeModal);
     modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
-    if (studentDetailClose) studentDetailClose.addEventListener('click', () => { if (studentDetailModal) studentDetailModal.classList.add('hidden'); document.body.classList.remove('modal-open'); });
+    if (studentDetailClose) studentDetailClose.addEventListener('click', () => { if (studentDetailModal) studentDetailModal.classList.add('hidden'); document.body.classList.remove('modal-open'); const wrap = document.getElementById('sd-advanced'); if (wrap) wrap.style.display = 'none'; });
     if (studentDetailModal) studentDetailModal.addEventListener('click', (e) => { if (e.target === studentDetailModal) studentDetailModal.classList.add('hidden'); });
 
     // Añadir nuevo usuario
