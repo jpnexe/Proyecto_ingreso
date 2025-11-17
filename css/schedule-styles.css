@@ -54,7 +54,7 @@
 .student-profile-card { border-radius: 16px; }
 .academic-info-card { border-radius: 16px; }
 .quick-access-card { border-radius: 16px; }
-.schedule-card { border-radius: 16px; margin-top: 1rem; }
+.schedule-card { border-radius: 16px; margin-top: 1rem; margin-bottom: 1.5rem; }
 .profile-row { margin-bottom: 12px; }
 .credential-center { text-align: center; margin-bottom: 10px; }
 .qr-wrap { background: white; padding: 15px; border-radius: 12px; display: inline-block; }

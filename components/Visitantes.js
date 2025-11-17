@@ -1,4 +1,4 @@
-import { createReserva, listReservas, updateUser } from '../js/db.js';
+import { createReserva, listReservas, updateUser, listEntriesByUser, ensureAutoExitForUser } from '../js/db.js';
 
 export function render({ currentUser }) {
   return `
@@ -25,9 +25,11 @@ export function render({ currentUser }) {
               </div>
               <div class="profile-row">
                 <strong>Estado:</strong>
-                <span class="badge" style="background: rgba(34, 197, 94, 0.2); color: #15803d;">
-                  ✅ Activo
-                </span>
+                <span id="visitor-status-badge" class="badge" style="background: rgba(160,160,160,0.2); color: #555;">—</span>
+              </div>
+              <div class="profile-row">
+                <strong>Último registro:</strong>
+                <span id="visitor-last-event" class="small">—</span>
               </div>
               <div class="profile-row">
                 <strong>Código:</strong>
@@ -153,22 +155,7 @@ export function render({ currentUser }) {
         <!-- Historial de visitas -->
         <div class="glass card mt-6">
           <div class="section-title">📋 Historial de Visitas</div>
-          <div class="visit-history">
-            <div class="history-item orange">
-              <div class="history-header">
-                <span class="history-icon">📥</span>
-                <strong>Visita registrada</strong>
-              </div>
-              <div class="small">Hoy, 09:00 AM - Visita Académica</div>
-            </div>
-            <div class="history-item blue">
-              <div class="history-header">
-                <span class="history-icon">📤</span>
-                <strong>Salida registrada</strong>
-              </div>
-              <div class="small">Ayer, 16:45 PM</div>
-            </div>
-          </div>
+          <div id="visit-history" class="visit-history"></div>
         </div>
       </div>
     </div>
@@ -226,6 +213,77 @@ export function mount({ currentUser, navigate, showToast }) {
   }
 
   if (currentUser) loadReservas(currentUser.id);
+
+  async function loadVisitHistory(userId) {
+    const wrap = document.getElementById('visit-history');
+    if (!wrap || !userId) return;
+    try {
+      const list = await listEntriesByUser(userId, 50);
+      if (!list.length) {
+        wrap.innerHTML = '<div class="small" style="padding: 12px;">Sin registros aún.</div>';
+        return;
+      }
+      wrap.innerHTML = list.map(e => {
+        const method = String(e.method || 'manual');
+        const isExit = method.startsWith('salida');
+        const color = isExit ? 'var(--blue)' : 'var(--orange)';
+        const bg = isExit ? 'rgba(52, 152, 219, 0.1)' : 'rgba(255, 127, 80, 0.1)';
+        const icon = isExit ? '📤' : '📥';
+        const baseLabel = isExit ? 'Salida registrada' : 'Entrada registrada';
+        const note = method === 'salida_auto' ? ' · No registró salida' : '';
+        const when = new Date(e.createdAt).toLocaleString('es-ES');
+        return `
+          <div style="margin-bottom: 15px; padding: 12px; background: ${bg}; border-left: 4px solid ${color}; border-radius: 8px;">
+            <div style="display: flex; align-items: center; margin-bottom: 5px;">
+              <span style="background: ${color}; color: white; padding: 4px 8px; border-radius: 50%; margin-right: 10px; font-size: 12px;">${icon}</span>
+              <strong>${baseLabel}${note}</strong>
+            </div>
+            <div class="small">${when}</div>
+          </div>`;
+      }).join('');
+    } catch (e) {
+      wrap.innerHTML = '<div class="small" style="padding: 12px; color:#e74c3c;">Error cargando historial.</div>';
+    }
+  }
+
+  async function updateVisitorStatus(userId) {
+    const badge = document.getElementById('visitor-status-badge');
+    const lastEl = document.getElementById('visitor-last-event');
+    if (!badge || !userId) return;
+    try {
+      await ensureAutoExitForUser(userId);
+      const list = await listEntriesByUser(userId, 1);
+      if (!list.length) {
+        badge.textContent = 'Sin registros';
+        badge.style.background = 'rgba(160,160,160,0.2)';
+        badge.style.color = '#555';
+        if (lastEl) lastEl.textContent = '—';
+        return;
+      }
+      const last = list[0];
+      const isExit = String(last.method || 'manual').startsWith('salida');
+      if (isExit) {
+        badge.textContent = 'Fuera';
+        badge.style.background = 'rgba(52, 152, 219, 0.2)';
+        badge.style.color = '#1b6ea8';
+      } else {
+        badge.textContent = 'Dentro';
+        badge.style.background = 'rgba(34, 197, 94, 0.2)';
+        badge.style.color = '#15803d';
+      }
+      if (lastEl) lastEl.textContent = new Date(last.createdAt).toLocaleString('es-ES');
+    } catch (e) {
+      badge.textContent = '—';
+      badge.style.background = 'rgba(160,160,160,0.2)';
+      badge.style.color = '#555';
+      if (lastEl) lastEl.textContent = '—';
+    }
+  }
+
+  if (currentUser?.id) {
+    updateVisitorStatus(currentUser.id);
+    loadVisitHistory(currentUser.id);
+  }
 
   // Función para mostrar QR en pantalla completa
   window.showQRFullscreen = function() {
@@ -302,10 +360,12 @@ export function mount({ currentUser, navigate, showToast }) {
             <strong>Email:</strong> ${newEmail}
           </div>
           <div class="profile-row">
-            <strong>Estado:</strong> 
-            <span class="badge" style="background: rgba(34, 197, 94, 0.2); color: #15803d;">
-              ✅ Activo
-            </span>
+            <strong>Estado:</strong>
+            <span id="visitor-status-badge" class="badge" style="background: rgba(160,160,160,0.2); color: #555;">—</span>
+          </div>
+          <div class="profile-row">
+            <strong>Último registro:</strong>
+            <span id="visitor-last-event" class="small">—</span>
           </div>
           <div class="profile-row">
             <strong>Código:</strong>
@@ -320,6 +380,7 @@ export function mount({ currentUser, navigate, showToast }) {
             ✏️ Editar Información
           </button>
         `;
+        updateVisitorStatus(currentUser.id);
       } catch (err) {
         showModal('Error al actualizar perfil: ' + err.message, 'error');
       }

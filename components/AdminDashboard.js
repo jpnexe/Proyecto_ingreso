@@ -1,4 +1,4 @@
-import { logAction, getUserStats, listUsers, updateUser, deleteUser, listReservas, getUserById, getUserByEmail, getUserByCode, registerEntry, registerExit, registerUser, getLogs, listTasks, createTask, updateTask, deleteTask, migrateLocalTasksToSQLite, exportSQLite, importSQLite, getDailyEntryStats, getEntryExitStats, getHourlyEntryStats, listEntriesByUser, getLastEntryForUser } from '../js/db.js';
+import { logAction, getUserStats, listUsers, updateUser, deleteUser, listReservas, getUserById, getUserByEmail, getUserByCode, registerEntry, registerExit, registerUser, getLogs, listTasks, createTask, updateTask, deleteTask, migrateLocalTasksToSQLite, exportSQLite, importSQLite, getDailyEntryStats, getEntryExitStats, getHourlyEntryStats, listEntriesByUser, getLastEntryForUser, listSchedules, ensureSchedulesForCareerSemester, assignScheduleToUser } from '../js/db.js';
 import { altListTasks, altCreateTask, altUpdateTask, altDeleteTask, altReplaceAllTasks, altExportSQLite, altImportSQLite } from '../js/alt_db.js';
 
 export function render() {
@@ -537,6 +537,14 @@ export function mount({ currentUser, navigate, showToast } = {}) {
                     <option value="9">9</option>
                     <option value="10">10</option>
                   </select>
+                  <label>Horario</label>
+                  <select id="edit-user-schedule">
+                    <option value="">Seleccionar horario</option>
+                  </select>
+                  <div style="grid-column: 1 / -1; display:flex; gap:8px; align-items:center;">
+                    <button id="generate-schedules-btn" class="btn btn-sm">Generar horarios para carrera/semestre</button>
+                    <span class="small muted">Se crean al menos 2 planes.</span>
+                  </div>
                 </div>
                 <div id="visitor-fields" class="visitor-only">
                   <label>Motivo de la visita</label>
@@ -1548,6 +1556,27 @@ export function mount({ currentUser, navigate, showToast } = {}) {
       careerEl.value = fixedCareers.includes(canonCareer) ? canonCareer : '';
       const sem = (u.semester||'').toString().trim();
       if (Array.from(semesterEl.options).some(opt => opt.value === sem)) semesterEl.value = sem; else semesterEl.value = '';
+      const scheduleEl = document.getElementById('edit-user-schedule');
+      const loadSchedules = async () => {
+        const c = careerEl.value.trim();
+        const s = semesterEl.value.trim();
+        if (!c || !s) { if (scheduleEl) scheduleEl.innerHTML = '<option value="">Seleccionar horario</option>'; return; }
+        try {
+          await ensureSchedulesForCareerSemester(c, s, 2);
+          const list = await listSchedules(c, s);
+          if (scheduleEl) {
+            scheduleEl.innerHTML = '<option value="">Seleccionar horario</option>' + list.map(it => `<option value="${it.id}">${it.label}</option>`).join('');
+            if (u.scheduleId && list.some(it => it.id === u.scheduleId)) scheduleEl.value = String(u.scheduleId);
+          }
+        } catch (_) { if (scheduleEl) scheduleEl.innerHTML = '<option value="">Seleccionar horario</option>'; }
+      };
+      loadSchedules();
+      careerEl.addEventListener('change', loadSchedules);
+      semesterEl.addEventListener('change', loadSchedules);
+      const genBtn = document.getElementById('generate-schedules-btn');
+      if (genBtn) {
+        genBtn.onclick = async () => { try { await ensureSchedulesForCareerSemester(careerEl.value.trim(), semesterEl.value.trim(), 2); await loadSchedules(); } catch {} };
+      }
       studentFields.style.display = roleEl.value === 'estudiante' ? 'grid' : 'none';
       if (visitReasonEl) visitReasonEl.value = (u.visitReason || '').trim();
       if (visitorFields) visitorFields.style.display = roleEl.value === 'visitante' ? 'grid' : 'none';
@@ -1843,6 +1872,8 @@ export function mount({ currentUser, navigate, showToast } = {}) {
       const password = passEl.value;
       const career = careerEl.value.trim();
       const semester = semesterEl.value.trim();
+      const scheduleEl = document.getElementById('edit-user-schedule');
+      const scheduleId = scheduleEl ? Number(scheduleEl.value || '') || null : null;
       const visitReason = visitReasonEl ? visitReasonEl.value.trim() : '';
       const adminCode = adminCodeEl ? adminCodeEl.value.trim() : '';
       if (!name || !email || !role) {
@@ -1865,6 +1896,9 @@ export function mount({ currentUser, navigate, showToast } = {}) {
         if (role === 'visitante') { update.visitReason = visitReason; } else { update.visitReason = ''; }
         try {
           await updateUser(id, update);
+          if (role === 'estudiante') {
+            await assignScheduleToUser(id, scheduleId);
+          }
           if (typeof showToast === 'function') showToast('Usuario actualizado', 'success');
           closeModal();
           renderTable();
@@ -1881,6 +1915,10 @@ export function mount({ currentUser, navigate, showToast } = {}) {
       }
       try {
         const newId = await registerUser({ name, email, password, role, adminCode, career: role==='estudiante'?career:'', semester: role==='estudiante'?semester:'', status });
+        if (role === 'estudiante') {
+          await ensureSchedulesForCareerSemester(career, semester, 2);
+          await assignScheduleToUser(newId, scheduleId);
+        }
         if (role === 'visitante' && visitReason) {
           await updateUser(newId, { visitReason });
         }
@@ -1942,6 +1980,23 @@ export function mount({ currentUser, navigate, showToast } = {}) {
         if (codeEl) codeEl.textContent = '—';
         if (qrEl) { qrEl.src=''; qrEl.style.display='none'; }
         modal.classList.remove('hidden');
+        const scheduleEl = document.getElementById('edit-user-schedule');
+        const careerSel = document.getElementById('edit-user-career');
+        const semesterSel = document.getElementById('edit-user-semester');
+        const genBtn = document.getElementById('generate-schedules-btn');
+        const loadSchedulesNew = async () => {
+          const c = careerSel.value.trim();
+          const s = semesterSel.value.trim();
+          if (!c || !s) { if (scheduleEl) scheduleEl.innerHTML = '<option value="">Seleccionar horario</option>'; return; }
+          try {
+            await ensureSchedulesForCareerSemester(c, s, 2);
+            const list = await listSchedules(c, s);
+            if (scheduleEl) scheduleEl.innerHTML = '<option value="">Seleccionar horario</option>' + list.map(it => `<option value="${it.id}">${it.label}</option>`).join('');
+          } catch (_) { if (scheduleEl) scheduleEl.innerHTML = '<option value="">Seleccionar horario</option>'; }
+        };
+        if (genBtn) { genBtn.onclick = async () => { try { await ensureSchedulesForCareerSemester(careerSel.value.trim(), semesterSel.value.trim(), 2); await loadSchedulesNew(); } catch {} }; }
+        careerSel.addEventListener('change', loadSchedulesNew);
+        semesterSel.addEventListener('change', loadSchedulesNew);
       });
     }
 

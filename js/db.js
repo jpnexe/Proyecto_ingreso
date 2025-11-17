@@ -196,6 +196,16 @@ async function openSQLite() {
       created_at INTEGER NOT NULL,
       FOREIGN KEY(user_id) REFERENCES users(id)
     );
+
+    /* Horarios académicos por carrera y semestre */
+    CREATE TABLE IF NOT EXISTS schedules (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      career TEXT NOT NULL,
+      semester TEXT NOT NULL,
+      label TEXT NOT NULL,
+      slots TEXT NOT NULL,
+      created_at INTEGER NOT NULL
+    );
   `);
   sqliteReady = true;
 }
@@ -257,6 +267,7 @@ function ensureOptionalUserColumns() {
     addColumnIfMissing('users', 'last_login', 'INTEGER');
     addColumnIfMissing('users', 'visit_reason', 'TEXT');
     addColumnIfMissing('users', 'user_code', 'TEXT');
+    addColumnIfMissing('users', 'schedule_id', 'INTEGER');
   } catch (e) {
     console.warn('No se pudieron asegurar columnas opcionales:', e);
   }
@@ -395,7 +406,7 @@ export async function registerUser({ name, email, password, role, adminCode, car
 export async function getUserByEmail(email) {
   await ensureSQLite();
   email = String(email || '').trim().toLowerCase();
-  const rows = all('SELECT id, name, email, role, career, semester, status, visit_reason, user_code, created_at, last_login FROM users WHERE LOWER(email)=LOWER(?) LIMIT 1', [email]);
+  const rows = all('SELECT id, name, email, role, career, semester, status, visit_reason, user_code, schedule_id, created_at, last_login FROM users WHERE LOWER(email)=LOWER(?) LIMIT 1', [email]);
   const r = rows[0];
   if (!r) return null;
   return {
@@ -408,6 +419,7 @@ export async function getUserByEmail(email) {
     status: r.status || 'activo',
     visitReason: r.visit_reason || '',
     userCode: r.user_code || '',
+    scheduleId: r.schedule_id || null,
     createdAt: new Date(r.created_at).toISOString(),
     lastLogin: r.last_login ? new Date(r.last_login).toISOString() : null,
   };
@@ -417,7 +429,7 @@ export async function getUserByCode(code) {
   await ensureSQLite();
   code = String(code || '').trim().toUpperCase();
   if (!code) return null;
-  const rows = all('SELECT id, name, email, role, career, semester, status, visit_reason, user_code, created_at, last_login FROM users WHERE UPPER(user_code)=? LIMIT 1', [code]);
+  const rows = all('SELECT id, name, email, role, career, semester, status, visit_reason, user_code, schedule_id, created_at, last_login FROM users WHERE UPPER(user_code)=? LIMIT 1', [code]);
   const r = rows[0];
   if (!r) return null;
   return {
@@ -430,6 +442,7 @@ export async function getUserByCode(code) {
     status: r.status || 'activo',
     visitReason: r.visit_reason || '',
     userCode: r.user_code || '',
+    scheduleId: r.schedule_id || null,
     createdAt: new Date(r.created_at).toISOString(),
     lastLogin: r.last_login ? new Date(r.last_login).toISOString() : null,
   };
@@ -437,7 +450,7 @@ export async function getUserByCode(code) {
 
 export async function getUserById(id) {
   await ensureSQLite();
-  const rows = all('SELECT id, name, email, role, career, semester, status, visit_reason, user_code, created_at, last_login FROM users WHERE id=? LIMIT 1', [id]);
+  const rows = all('SELECT id, name, email, role, career, semester, status, visit_reason, user_code, schedule_id, created_at, last_login FROM users WHERE id=? LIMIT 1', [id]);
   const r = rows[0];
   if (!r) return null;
   return {
@@ -450,6 +463,7 @@ export async function getUserById(id) {
     status: r.status || 'activo',
     visitReason: r.visit_reason || '',
     userCode: r.user_code || '',
+    scheduleId: r.schedule_id || null,
     createdAt: new Date(r.created_at).toISOString(),
     lastLogin: r.last_login ? new Date(r.last_login).toISOString() : null,
   };
@@ -483,7 +497,7 @@ export async function authenticateUser(email, password) {
 
 export async function listUsers() {
   await ensureSQLite();
-  const rows = all('SELECT id, name, email, role, career, semester, status, visit_reason, user_code, created_at, last_login FROM users ORDER BY id ASC');
+  const rows = all('SELECT id, name, email, role, career, semester, status, visit_reason, user_code, schedule_id, created_at, last_login FROM users ORDER BY id ASC');
   return rows.map(r => ({
     id: r.id,
     name: r.name,
@@ -494,6 +508,7 @@ export async function listUsers() {
     status: r.status || 'activo',
     visitReason: r.visit_reason || '',
     userCode: r.user_code || '',
+    scheduleId: r.schedule_id || null,
     createdAt: new Date(r.created_at).toISOString(),
     lastLogin: r.last_login ? new Date(r.last_login).toISOString() : null,
   }));
@@ -511,7 +526,8 @@ export async function updateUser(id, data) {
     semester: 'semester',
     status: 'status',
     visitReason: 'visit_reason',
-    userCode: 'user_code'
+    userCode: 'user_code',
+    scheduleId: 'schedule_id'
   };
   const sets = [];
   const params = [];
@@ -751,8 +767,8 @@ export async function getUsersByRole(role, filters = {}) {
   if (filters.status) { conds.push('status = ?'); params.push(filters.status); }
   if (filters.career && role === 'estudiante') { conds.push('career = ?'); params.push(filters.career); }
   if (filters.semester && role === 'estudiante') { conds.push('semester = ?'); params.push(filters.semester); }
-  const rows = all(`SELECT id, name, email, role, career, semester, status, visit_reason, user_code, created_at, last_login FROM users WHERE ${conds.join(' AND ')} ORDER BY id ASC`, params);
-  return rows.map(r => ({ id: r.id, name: r.name, email: r.email, role: r.role, career: r.career || '', semester: r.semester || '', status: r.status || 'activo', visitReason: r.visit_reason || '', userCode: r.user_code || '', createdAt: new Date(r.created_at).toISOString(), lastLogin: r.last_login ? new Date(r.last_login).toISOString() : null }));
+  const rows = all(`SELECT id, name, email, role, career, semester, status, visit_reason, user_code, schedule_id, created_at, last_login FROM users WHERE ${conds.join(' AND ')} ORDER BY id ASC`, params);
+  return rows.map(r => ({ id: r.id, name: r.name, email: r.email, role: r.role, career: r.career || '', semester: r.semester || '', status: r.status || 'activo', visitReason: r.visit_reason || '', userCode: r.user_code || '', scheduleId: r.schedule_id || null, createdAt: new Date(r.created_at).toISOString(), lastLogin: r.last_login ? new Date(r.last_login).toISOString() : null }));
 }
 
 // Función para eliminar usuario (con logs)
@@ -807,6 +823,7 @@ export async function resetDatabase() {
     DELETE FROM sessions;
     DELETE FROM tasks;
     DELETE FROM entries;
+    DELETE FROM schedules;
   `);
   await saveSQLite();
   await seedIfEmpty();
@@ -918,10 +935,15 @@ export async function ensureAutoExitForUser(userId) {
   await ensureSQLite();
   const rows = all('SELECT created_at, method FROM entries WHERE user_id=? ORDER BY created_at ASC', [userId]);
   if (!rows.length) return 0;
-  const todayKey = new Date().toISOString().slice(0, 10);
+  const pad2 = (n) => String(n).padStart(2, '0');
+  const makeLocalKey = (ms) => {
+    const d = new Date(ms);
+    return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+  };
+  const todayKey = makeLocalKey(Date.now());
   const byDay = new Map();
   for (const r of rows) {
-    const k = new Date(r.created_at).toISOString().slice(0, 10);
+    const k = makeLocalKey(r.created_at);
     if (!byDay.has(k)) byDay.set(k, []);
     byDay.get(k).push(String(r.method || 'manual'));
   }
@@ -936,9 +958,117 @@ export async function ensureAutoExitForUser(userId) {
       const m = Number(parts[1]) - 1;
       const d = Number(parts[2]);
       const endMs = new Date(y, m, d + 1).getTime() - 1000;
-      await registerExit(userId, { auto: true, at: endMs });
-      inserted++;
+      const exists = all('SELECT id FROM entries WHERE user_id=? AND method=? AND created_at=? LIMIT 1', [userId, 'salida_auto', endMs])[0];
+      if (!exists) {
+        await registerExit(userId, { auto: true, at: endMs });
+        inserted++;
+      }
     }
   }
   return inserted;
+}
+
+// --- Horarios académicos ---
+function canonicalizeCareer(c) {
+  const s = String(c||'').trim();
+  if (!s) return '';
+  const map = {
+    'ingeniería en sistemas': 'Ingeniería en sistemas',
+    'administración de empresas': 'Administración de Empresas',
+    'contaduría pública': 'Contaduría Pública',
+    'trabajo social': 'Trabajo social',
+    'licenciatura infantil': 'Licenciatura infantil',
+  };
+  const k = s.toLowerCase();
+  return map[k] || s;
+}
+
+function coursePoolFor(career, semester) {
+  const c = canonicalizeCareer(career);
+  const pools = {
+    'Ingeniería en sistemas': ['Algoritmos', 'Bases de Datos', 'Redes', 'Inteligencia Artificial', 'Programación', 'Sistemas Operativos', 'Ingeniería de Software'],
+    'Administración de Empresas': ['Administración I', 'Finanzas', 'Marketing', 'Economía', 'Gestión de Proyectos', 'Estadística'],
+    'Contaduría Pública': ['Contabilidad I', 'Contabilidad II', 'Auditoría', 'Costos', 'Tributaria', 'Finanzas'],
+    'Trabajo social': ['Metodología', 'Psicología Social', 'Intervención Comunitaria', 'Ética Profesional', 'Investigación'],
+    'Licenciatura infantil': ['Didáctica I', 'Pedagogía', 'Psicología Educativa', 'Lenguaje y Comunicación', 'Matemática Básica'],
+    '': ['Curso General']
+  };
+  const base = pools[c] || pools[''];
+  const s = String(semester||'').trim();
+  if (!s) return base;
+  return base.map(n => `${n} (${s})`);
+}
+
+function randomPick(arr) { return arr[Math.floor(Math.random()*arr.length)]; }
+
+function buildRandomSlots(career, semester) {
+  const days = ['Lunes','Martes','Miércoles','Jueves','Viernes'];
+  const times = ['08:00 - 10:00','10:00 - 12:00','14:00 - 16:00','16:00 - 18:00'];
+  const courses = coursePoolFor(career, semester);
+  const rows = times.map(t => {
+    const row = { time: t };
+    const activeDays = [...days].sort(() => Math.random()-0.5).slice(2 + Math.floor(Math.random()*2));
+    for (const d of days) {
+      row[d] = activeDays.includes(d) ? randomPick(courses) : '';
+    }
+    return row;
+  });
+  return rows;
+}
+
+export async function ensureSchedulesForCareerSemester(career, semester, min = 2) {
+  await ensureSQLite();
+  const canon = canonicalizeCareer(career);
+  const rows = all('SELECT COUNT(*) as c FROM schedules WHERE career=? AND semester=?', [canon, String(semester||'').trim()]);
+  const count = Number(rows[0]?.c || 0);
+  const need = Math.max(0, min - count);
+  for (let i=0; i<need; i++) {
+    const label = `Plan ${String.fromCharCode(65 + i + count)}`;
+    const slots = buildRandomSlots(canon, semester);
+    run('INSERT INTO schedules (career, semester, label, slots, created_at) VALUES (?,?,?,?,?)', [canon, String(semester||'').trim(), label, JSON.stringify(slots), Date.now()]);
+  }
+  if (need) await saveSQLite();
+}
+
+export async function listSchedules(career, semester) {
+  await ensureSQLite();
+  const canon = canonicalizeCareer(career);
+  const rows = all('SELECT id, career, semester, label, slots, created_at FROM schedules WHERE career=? AND semester=? ORDER BY id ASC', [canon, String(semester||'').trim()]);
+  return rows.map(r => ({ id: r.id, career: r.career, semester: r.semester, label: r.label, slots: JSON.parse(r.slots || '[]'), createdAt: new Date(r.created_at).toISOString() }));
+}
+
+export async function getScheduleById(id) {
+  await ensureSQLite();
+  const rows = all('SELECT id, career, semester, label, slots, created_at FROM schedules WHERE id=? LIMIT 1', [id]);
+  const r = rows[0];
+  if (!r) return null;
+  return { id: r.id, career: r.career, semester: r.semester, label: r.label, slots: JSON.parse(r.slots||'[]'), createdAt: new Date(r.created_at).toISOString() };
+}
+
+export async function assignScheduleToUser(userId, scheduleId) {
+  await ensureSQLite();
+  run('UPDATE users SET schedule_id=? WHERE id=?', [scheduleId || null, userId]);
+  await saveSQLite();
+  await logAction(userId, 'schedule_assigned', `Horario asignado: ${scheduleId || 'none'}`);
+  window.dispatchEvent(new CustomEvent('dbchange', { detail: { type: 'users', id: userId } }));
+}
+
+export async function getAssignedScheduleForUser(userId) {
+  await ensureSQLite();
+  const rows = all('SELECT schedule_id, career, semester FROM users WHERE id=? LIMIT 1', [userId]);
+  const r = rows[0];
+  if (!r) return null;
+  const sid = r.schedule_id || null;
+  if (sid) return await getScheduleById(sid);
+  await ensureSchedulesForCareerSemester(r.career || '', r.semester || '', 2);
+  const list = await listSchedules(r.career || '', r.semester || '');
+  return list[0] || null;
+}
+
+export async function generateSchedulesForExistingCombos(min = 2) {
+  await ensureSQLite();
+  const combos = all("SELECT DISTINCT career, semester FROM users WHERE role='estudiante' AND career<>'' AND semester<>''");
+  for (const c of combos) {
+    await ensureSchedulesForCareerSemester(c.career, c.semester, min);
+  }
 }

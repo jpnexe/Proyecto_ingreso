@@ -1,4 +1,4 @@
-import { listAnnouncements, listEntriesByUser, getLastEntryForUser, ensureAutoExitForUser } from '../js/db.js';
+import { listAnnouncements, listEntriesByUser, getLastEntryForUser, ensureAutoExitForUser, getAssignedScheduleForUser } from '../js/db.js';
 
 export function render({ currentUser }) {
   return `
@@ -21,7 +21,8 @@ export function render({ currentUser }) {
               <div class="student-profile-details">
                 <div class="profile-row"><strong>ID Estudiantil:</strong> ${currentUser?.id || '20231045'}</div>
                 <div class="profile-row"><strong>Código visible:</strong> <span id="student-code">${currentUser?.userCode || (currentUser?.id ? ('UG-'+currentUser.id) : 'UG-20231045')}</span></div>
-                <div class="profile-row"><strong>Semestre Actual:</strong> 4to Semestre</div>
+                <div class="profile-row"><strong>Carrera:</strong> ${currentUser?.career || 'Sin carrera'}</div>
+                <div class="profile-row"><strong>Semestre Actual:</strong> ${currentUser?.semester || '—'}</div>
                 <div class="profile-row"><strong>Email Institucional:</strong> ${currentUser?.email || 'estudiante@uniguajira.edu.co'}</div>
                 <div class="profile-row">
                   <strong>Estado:</strong>
@@ -67,7 +68,7 @@ export function render({ currentUser }) {
 
       <!-- Horario Semanal -->
       <section class="glass card schedule-card">
-        <div class="section-title">📅 Horario Semanal</div>
+        <div class="section-title">📅 Horario Semanal <span id="schedule-label" class="chip" style="margin-left:8px;">—</span></div>
         <div class="texture-pane">
         <div class="schedule-wrap">
           <table class="schedule-table">
@@ -81,40 +82,7 @@ export function render({ currentUser }) {
                 <th>Viernes</th>
               </tr>
             </thead>
-            <tbody>
-              <tr>
-                <td><strong>08:00 - 10:00</strong></td>
-                <td><span class="course-chip">Algoritmos</span></td>
-                <td></td>
-                <td><span class="course-chip">Algoritmos</span></td>
-                <td></td>
-                <td><span class="course-chip">Algoritmos</span></td>
-              </tr>
-              <tr>
-                <td><strong>10:00 - 12:00</strong></td>
-                <td><span class="course-chip alt">Bases de Datos</span></td>
-                <td><span class="course-chip alt">Bases de Datos</span></td>
-                <td></td>
-                <td><span class="course-chip alt">Bases de Datos</span></td>
-                <td></td>
-              </tr>
-              <tr>
-                <td><strong>14:00 - 16:00</strong></td>
-                <td></td>
-                <td><span class="course-chip blue">Redes</span></td>
-                <td><span class="course-chip blue">Redes</span></td>
-                <td></td>
-                <td><span class="course-chip blue">Redes</span></td>
-              </tr>
-              <tr>
-                <td><strong>16:00 - 18:00</strong></td>
-                <td><span class="course-chip green">Inteligencia Artificial</span></td>
-                <td></td>
-                <td><span class="course-chip green">Inteligencia Artificial</span></td>
-                <td></td>
-                <td></td>
-              </tr>
-            </tbody>
+            <tbody id="schedule-body"></tbody>
           </table>
         </div>
         </div>
@@ -143,6 +111,7 @@ export async function mount({ currentUser, navigate, toast }) {
     try { await ensureAutoExitForUser(currentUser.id); } catch {}
   }
   loadEntryHistory(currentUser);
+  loadAssignedSchedule(currentUser);
 }
 
 
@@ -253,4 +222,31 @@ async function loadEntryHistory(currentUser) {
 // Función para editar perfil
 function editProfile() {
   alert('✏️ Función de edición de perfil en desarrollo');
+}
+function paintScheduleTable(schedule) {
+  const tbody = document.getElementById('schedule-body');
+  const labelEl = document.getElementById('schedule-label');
+  if (!tbody) return;
+  const rows = Array.isArray(schedule?.slots) ? schedule.slots : [];
+  tbody.innerHTML = rows.map(r => {
+    const cell = (v, cls) => v ? `<span class="course-chip${cls?(' '+cls):''}">${v}</span>` : '';
+    return `
+      <tr>
+        <td><strong>${r.time || ''}</strong></td>
+        <td>${cell(r['Lunes'], '')}</td>
+        <td>${cell(r['Martes'], 'alt')}</td>
+        <td>${cell(r['Miércoles'], 'blue')}</td>
+        <td>${cell(r['Jueves'], '')}</td>
+        <td>${cell(r['Viernes'], 'green')}</td>
+      </tr>`;
+  }).join('');
+  if (labelEl) labelEl.textContent = schedule?.label || '—';
+}
+
+async function loadAssignedSchedule(currentUser) {
+  try {
+    if (!currentUser?.id) return;
+    const sched = await getAssignedScheduleForUser(currentUser.id);
+    if (sched) paintScheduleTable(sched);
+  } catch {}
 }
