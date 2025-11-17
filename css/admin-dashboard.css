@@ -439,6 +439,7 @@ body {
 .chart-header h3 {
   margin: 0;
   font-size: 16px;
+  color: var(--text-primary, #ffffff);
 }
 
 .chart-settings {
@@ -446,7 +447,7 @@ body {
   border: none;
   font-size: 18px;
   cursor: pointer;
-  color: #000000;
+  color: var(--text-primary, #ffffff);
 }
 
 .recent-customers {
@@ -456,6 +457,7 @@ body {
     border: 1px solid var(--border-color);
     backdrop-filter: blur(10px);
     box-shadow: 0 20px 40px var(--shadow-color);
+    color: #ffffff;
 }
 
 .recent-customers-header {
@@ -468,6 +470,7 @@ body {
 .recent-customers-header h3 {
     margin: 0;
     font-size: 16px;
+    color: #ffffff;
 }
 
 .recent-customers-table table {
@@ -487,6 +490,7 @@ body {
     font-weight: 600;
     color: #ffffff;
 }
+.recent-customers-table td { color: #ffffff; }
 
 .recent-customers-table td img {
     width: 40px;
@@ -620,7 +624,7 @@ body {
 .users-table thead th {
   font-size: 12px;
   font-weight: 600;
-  color: var(--text-color-light);
+  color: var(--text-primary, #ffffff);
   background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02));
   border-bottom: 1px solid var(--border-color);
   padding: 10px 12px;
@@ -629,12 +633,17 @@ body {
   z-index: 1;
   text-align: center;
 }
+.users-table tbody td { color: var(--text-primary, #ffffff); }
+[data-theme="light"] .users-table thead th,
+[data-theme="light"] .users-table tbody td { color: #1f2937; }
 .users-table tbody td {
   padding: 12px;
   border-bottom: 1px solid var(--border-color);
   vertical-align: middle;
   text-align: center;
 }
+.users-section .users-table thead th,
+.users-section .users-table tbody td { color: #ffffff; }
 .users-table tbody tr:hover { background: rgba(255,255,255,0.06); }
 .users-table tbody tr:nth-child(even) { background: rgba(255,255,255,0.03); }
 
@@ -1006,7 +1015,10 @@ body {
 .messages-section table th,
 .messages-section table td {
   text-align: center;
+  color: var(--text-primary, #ffffff);
 }
+[data-theme="light"] .messages-section table th,
+[data-theme="light"] .messages-section table td { color: #1f2937; }
 
 @media (max-width: 768px) {
   .calendar-section .calendar-board { grid-template-columns: 1fr; }

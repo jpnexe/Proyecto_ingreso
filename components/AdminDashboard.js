@@ -635,6 +635,20 @@ export function mount({ currentUser, navigate, showToast } = {}) {
   let categoriesChart = null;
   let dailyRegsChart = null;
 
+  const readCssVar = (name, fallback) => {
+    const v = getComputedStyle(document.documentElement).getPropertyValue(name);
+    const s = (v || '').trim();
+    return s || fallback;
+  };
+  const getChartTheme = () => {
+    const t = document.documentElement.getAttribute('data-theme') || 'light';
+    const text = readCssVar('--text-primary', t === 'dark' ? '#ffffff' : '#1f2937');
+    const grid = readCssVar('--border-color', t === 'dark' ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.15)');
+    const tooltipBg = t === 'dark' ? 'rgba(18,20,28,0.92)' : 'rgba(255,255,255,0.97)';
+    const tooltipBorder = readCssVar('--border-color', t === 'dark' ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.12)');
+    return { text, grid, tooltipBg, tooltipBorder };
+  };
+
   const initInicioCharts = async () => {
     const refreshBtn = document.getElementById('refresh-stats-btn');
     if (refreshBtn && !refreshBtn.dataset.bound) {
@@ -665,6 +679,7 @@ export function mount({ currentUser, navigate, showToast } = {}) {
     const categoriesCanvas = document.getElementById('career-distribution-chart');
     const dailyCanvas = document.getElementById('daily-role-registrations-chart');
     if (!categoriesCanvas) return;
+    const ct = getChartTheme();
 
     // Distribución de estudiantes por carrera (dinámico desde BD)
     const categoriesCtx = categoriesCanvas.getContext('2d');
@@ -728,7 +743,7 @@ export function mount({ currentUser, navigate, showToast } = {}) {
         labels,
         datasets: [{ label: 'Estudiantes por carrera', data, backgroundColor: colors, borderWidth: 0 }]
       },
-      options: { responsive: true, maintainAspectRatio: true, aspectRatio: 1.2, resizeDelay: 150, plugins: { legend: { position: 'bottom' } } }
+      options: { responsive: true, maintainAspectRatio: true, aspectRatio: 1.2, resizeDelay: 150, plugins: { legend: { position: 'bottom', labels: { color: ct.text } }, tooltip: { backgroundColor: ct.tooltipBg, titleColor: ct.text, bodyColor: ct.text, borderColor: ct.tooltipBorder, borderWidth: 1 } } }
     });
 
     // Gráfico de barras: registros diarios por rol (últimos 7 días)
@@ -763,8 +778,8 @@ export function mount({ currentUser, navigate, showToast } = {}) {
           maintainAspectRatio: true,
           aspectRatio: 1.6,
           resizeDelay: 150,
-          scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
-          plugins: { legend: { position: 'top', align: 'start' } }
+          scales: { x: { ticks: { color: ct.text }, grid: { color: ct.grid } }, y: { beginAtZero: true, ticks: { precision: 0, color: ct.text }, grid: { color: ct.grid } } },
+          plugins: { legend: { position: 'top', align: 'start', labels: { color: ct.text } }, tooltip: { backgroundColor: ct.tooltipBg, titleColor: ct.text, bodyColor: ct.text, borderColor: ct.tooltipBorder, borderWidth: 1 } }
         }
       });
     }
@@ -1092,10 +1107,11 @@ export function mount({ currentUser, navigate, showToast } = {}) {
     const statusByRoleCanvas = document.getElementById('status-by-role-chart');
     if (!usersCanvas || !activityCanvas) return;
     const baseStats = await getUserStats();
+    const ct = getChartTheme();
     new Chart(usersCanvas.getContext('2d'), {
       type: 'doughnut',
       data: { labels: ['Visitantes','Estudiantes','Administradores'], datasets: [{ label: 'Usuarios', data: [baseStats.visitantes||0, baseStats.estudiantes||0, baseStats.admins||0], backgroundColor: ['#3498db','#2ecc71','#e74c3c'] }] },
-      options: { responsive: true, maintainAspectRatio: true, aspectRatio: 1.1, plugins: { legend: { position: 'bottom' } } }
+      options: { responsive: true, maintainAspectRatio: true, aspectRatio: 1.1, plugins: { legend: { position: 'bottom', labels: { color: ct.text } }, tooltip: { backgroundColor: ct.tooltipBg, titleColor: ct.text, bodyColor: ct.text, borderColor: ct.tooltipBorder, borderWidth: 1 } } }
     });
     const entryStats = await getDailyEntryStats(7);
     const labels = entryStats.labels.map(s => new Date(s + 'T00:00:00').toLocaleDateString('es-ES', { weekday: 'short' }));
@@ -1108,7 +1124,7 @@ export function mount({ currentUser, navigate, showToast } = {}) {
           { label: 'Visitantes', data: entryStats.visitantes, borderColor: '#3498db', backgroundColor: 'rgba(52,152,219,0.2)', tension: 0.35 }
         ]
       },
-      options: { responsive: true, maintainAspectRatio: true, aspectRatio: 1.3, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }, plugins: { legend: { position: 'top', align: 'start' } } }
+      options: { responsive: true, maintainAspectRatio: true, aspectRatio: 1.3, scales: { x: { ticks: { color: ct.text }, grid: { color: ct.grid } }, y: { beginAtZero: true, ticks: { precision: 0, color: ct.text }, grid: { color: ct.grid } } }, plugins: { legend: { position: 'top', align: 'start', labels: { color: ct.text } }, tooltip: { backgroundColor: ct.tooltipBg, titleColor: ct.text, bodyColor: ct.text, borderColor: ct.tooltipBorder, borderWidth: 1 } } }
     });
     if (entryExitCanvas) {
       const exStats = await getEntryExitStats(7);
@@ -1116,7 +1132,7 @@ export function mount({ currentUser, navigate, showToast } = {}) {
       new Chart(entryExitCanvas.getContext('2d'), {
         type: 'bar',
         data: { labels: exLabels, datasets: [ { label: 'Entradas', data: exStats.entries, backgroundColor: '#2ecc71' }, { label: 'Salidas', data: exStats.exits, backgroundColor: '#e74c3c' } ] },
-        options: { responsive: true, maintainAspectRatio: true, aspectRatio: 1.2, scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true, ticks: { precision: 0 } } }, plugins: { legend: { position: 'top' } } }
+        options: { responsive: true, maintainAspectRatio: true, aspectRatio: 1.2, scales: { x: { stacked: true, ticks: { color: ct.text }, grid: { color: ct.grid } }, y: { stacked: true, beginAtZero: true, ticks: { precision: 0, color: ct.text }, grid: { color: ct.grid } } }, plugins: { legend: { position: 'top', labels: { color: ct.text } }, tooltip: { backgroundColor: ct.tooltipBg, titleColor: ct.text, bodyColor: ct.text, borderColor: ct.tooltipBorder, borderWidth: 1 } } }
       });
     }
     if (hourlyCanvas) {
@@ -1126,7 +1142,7 @@ export function mount({ currentUser, navigate, showToast } = {}) {
       new Chart(hourlyCanvas.getContext('2d'), {
         type: 'bar',
         data: { labels: hStats.labels, datasets: [ { label: 'Ingresos por hora', data: hStats.entries, backgroundColor: colors } ] },
-        options: { responsive: true, maintainAspectRatio: true, aspectRatio: 1.2, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
+        options: { responsive: true, maintainAspectRatio: true, aspectRatio: 1.2, scales: { x: { ticks: { color: ct.text }, grid: { color: ct.grid } }, y: { beginAtZero: true, ticks: { precision: 0, color: ct.text }, grid: { color: ct.grid } } }, plugins: { legend: { labels: { color: ct.text } }, tooltip: { backgroundColor: ct.tooltipBg, titleColor: ct.text, bodyColor: ct.text, borderColor: ct.tooltipBorder, borderWidth: 1 } } }
       });
     }
     if (statusByRoleCanvas) {
@@ -1137,7 +1153,7 @@ export function mount({ currentUser, navigate, showToast } = {}) {
       new Chart(statusByRoleCanvas.getContext('2d'), {
         type: 'bar',
         data: { labels: ['Estudiantes','Visitantes','Administradores'], datasets: [ { label: 'Activo', data: activos, backgroundColor: '#2ecc71' }, { label: 'Inactivo', data: inactivos, backgroundColor: '#f1c40f' } ] },
-        options: { responsive: true, maintainAspectRatio: true, aspectRatio: 1.2, indexAxis: 'y', scales: { x: { stacked: true, beginAtZero: true, ticks: { precision: 0 } }, y: { stacked: true } }, plugins: { legend: { position: 'top' } } }
+        options: { responsive: true, maintainAspectRatio: true, aspectRatio: 1.2, indexAxis: 'y', scales: { x: { stacked: true, beginAtZero: true, ticks: { precision: 0, color: ct.text }, grid: { color: ct.grid } }, y: { stacked: true, ticks: { color: ct.text }, grid: { color: ct.grid } } }, plugins: { legend: { position: 'top', labels: { color: ct.text } }, tooltip: { backgroundColor: ct.tooltipBg, titleColor: ct.text, bodyColor: ct.text, borderColor: ct.tooltipBorder, borderWidth: 1 } } }
       });
     }
   };
@@ -1990,6 +2006,8 @@ export function mount({ currentUser, navigate, showToast } = {}) {
         themeIcon.classList.add('fa-moon');
         if (themeLabel) themeLabel.textContent = 'Modo oscuro';
       }
+      const cur = localStorage.getItem('adminLastSection') || 'inicio';
+      renderSection(cur);
     };
 
     // Inicializa con el tema guardado o actual
