@@ -12,9 +12,10 @@ import sys
 import os
 from datetime import datetime
 
-# Configuración de cuenta Git
-GIT_USERNAME = "David109754"
-GIT_EMAIL = "ovettovar79@gmail.com"
+GIT_USERNAME = os.environ.get("GITHUB_USERNAME") or os.environ.get("GIT_USERNAME") or "jpnexe"
+GIT_EMAIL = os.environ.get("GITHUB_EMAIL") or os.environ.get("GIT_EMAIL") or "jaider.sg6003@gmail.com"
+GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN") or ""
+GITHUB_REPO = os.environ.get("GITHUB_REPO") or ""
 
 def ejecutar_comando(comando, mostrar_salida=True):
     """
@@ -62,11 +63,17 @@ def verificar_git():
     
     print("✅ Git verificado correctamente")
     
-    # Configurar datos de usuario Git
     print("\n🔧 Configurando datos de usuario Git...")
-    ejecutar_comando(f'git config user.name "{GIT_USERNAME}"', mostrar_salida=False)
-    ejecutar_comando(f'git config user.email "{GIT_EMAIL}"', mostrar_salida=False)
-    print(f"✅ Usuario configurado: {GIT_USERNAME} ({GIT_EMAIL})")
+    def get_cfg(key):
+        ok, out = ejecutar_comando(f'git config --get {key}', mostrar_salida=False)
+        return out.strip() if ok and out else ""
+    uname = GIT_USERNAME or get_cfg("user.name")
+    uemail = GIT_EMAIL or get_cfg("user.email")
+    if uname:
+        ejecutar_comando(f'git config user.name "{uname}"', mostrar_salida=False)
+    if uemail:
+        ejecutar_comando(f'git config user.email "{uemail}"', mostrar_salida=False)
+    print(f"✅ Usuario configurado: {uname or '(sin nombre)'} ({uemail or 'sin email'})")
     
     return True
 
@@ -126,15 +133,58 @@ def hacer_push():
     Realiza el push al repositorio remoto
     """
     print("\n🚀 Subiendo cambios al repositorio remoto...")
-    
-    exito, _ = ejecutar_comando("git push")
-    if exito:
+    def get_branch():
+        ok, out = ejecutar_comando("git rev-parse --abbrev-ref HEAD", mostrar_salida=False)
+        return out.strip() if ok and out else "main"
+    def get_origin():
+        ok, out = ejecutar_comando("git remote get-url origin", mostrar_salida=False)
+        return out.strip() if ok and out else ""
+    def parse_remote(u):
+        u = u.strip()
+        if not u:
+            return ("", "")
+        if u.startswith("git@github.com:"):
+            path = u.split(":",1)[1]
+        elif u.startswith("https://github.com/") or u.startswith("http://github.com/"):
+            path = u.split("github.com/",1)[1]
+        else:
+            path = u
+        path = path[:-4] if path.endswith(".git") else path
+        parts = path.split("/")
+        if len(parts) >= 2:
+            return (parts[0], parts[1])
+        return ("", "")
+
+    branch = get_branch()
+    origin = get_origin()
+    owner, repo = parse_remote(origin)
+    if not origin and GITHUB_REPO:
+        if "/" in GITHUB_REPO:
+            owner, repo = GITHUB_REPO.split("/",1)
+        else:
+            owner = GIT_USERNAME or os.environ.get("GITHUB_USERNAME") or ""
+            repo = GITHUB_REPO
+        if owner and repo:
+            url = f"https://github.com/{owner}/{repo}.git"
+            ejecutar_comando(f"git remote add origin {url}", mostrar_salida=False)
+            origin = url
+
+    if GITHUB_TOKEN and owner and repo:
+        push_url = f"https://{owner}:{GITHUB_TOKEN}@github.com/{owner}/{repo}.git"
+        cmd = f"git push {push_url} HEAD:{branch}"
+        ok, _ = ejecutar_comando(cmd)
+        if ok:
+            print("✅ Cambios subidos correctamente a GitHub (con token)")
+            return True
+        print("❌ Error al subir con token, intentando push estándar...")
+
+    ok, _ = ejecutar_comando("git push")
+    if ok:
         print("✅ Cambios subidos correctamente a GitHub")
         return True
-    else:
-        print("❌ Error al subir cambios")
-        print("💡 Tip: Verifica tu conexión a internet y credenciales de Git")
-        return False
+    print("❌ Error al subir cambios")
+    print("💡 Tip: Exporta GITHUB_TOKEN y GITHUB_USERNAME o configura origin")
+    return False
 
 def obtener_mensaje_commit():
     """
