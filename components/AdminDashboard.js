@@ -1158,14 +1158,15 @@ export function mount({ currentUser, navigate, showToast } = {}) {
       options: { responsive: true, maintainAspectRatio: true, aspectRatio: 1.1, plugins: { legend: { position: 'bottom', labels: { color: ct.text } }, tooltip: { backgroundColor: ct.tooltipBg, titleColor: ct.text, bodyColor: ct.text, borderColor: ct.tooltipBorder, borderWidth: 1 } } }
     });
     const entryStats = await getDailyEntryStats(7);
-    const labels = entryStats.labels.map(s => new Date(s + 'T00:00:00').toLocaleDateString('es-ES', { weekday: 'short' }));
+    const labels = entryStats.labels.map(s => new Date(s + 'T00:00:00').toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }));
     new Chart(activityCanvas.getContext('2d'), {
       type: 'line',
       data: {
         labels,
         datasets: [
           { label: 'Estudiantes', data: entryStats.estudiantes, borderColor: '#2ecc71', backgroundColor: 'rgba(46,204,113,0.2)', tension: 0.35 },
-          { label: 'Visitantes', data: entryStats.visitantes, borderColor: '#3498db', backgroundColor: 'rgba(52,152,219,0.2)', tension: 0.35 }
+          { label: 'Visitantes', data: entryStats.visitantes, borderColor: '#3498db', backgroundColor: 'rgba(52,152,219,0.2)', tension: 0.35 },
+          { label: 'Administradores', data: entryStats.admins, borderColor: '#e74c3c', backgroundColor: 'rgba(231,76,60,0.2)', tension: 0.35 }
         ]
       },
       options: { responsive: true, maintainAspectRatio: true, aspectRatio: 1.3, scales: { x: { ticks: { color: ct.text }, grid: { color: ct.grid } }, y: { beginAtZero: true, ticks: { precision: 0, color: ct.text }, grid: { color: ct.grid } } }, plugins: { legend: { position: 'top', align: 'start', labels: { color: ct.text } }, tooltip: { backgroundColor: ct.tooltipBg, titleColor: ct.text, bodyColor: ct.text, borderColor: ct.tooltipBorder, borderWidth: 1 } } }

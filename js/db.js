@@ -850,6 +850,7 @@ export async function getDailyEntryStats(days = 7) {
   const idx = new Map(daysArr.map((d, i) => [dayKey(d.getTime()), i]));
   const est = Array(daysArr.length).fill(0);
   const vis = Array(daysArr.length).fill(0);
+  const adm = Array(daysArr.length).fill(0);
   for (const r of rows) {
     const k = dayKey(r.ts);
     const i = idx.get(k);
@@ -857,10 +858,11 @@ export async function getDailyEntryStats(days = 7) {
       const role = String(r.role || '').toLowerCase();
       if (role === 'estudiante') est[i]++;
       else if (role === 'visitante') vis[i]++;
+      else if (role === 'admin') adm[i]++;
     }
   }
   const labels = daysArr.map(d => d.toISOString().slice(0, 10));
-  return { labels, estudiantes: est, visitantes: vis };
+  return { labels, estudiantes: est, visitantes: vis, admins: adm };
 }
 export async function getEntryExitStats(days = 7) {
   await ensureSQLite();
