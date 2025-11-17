@@ -427,13 +427,13 @@ body {
 }
 
 /* Asegurar que el canvas no desborde y escale correctamente */
-.charts-grid .chart-card { height: 380px; display: flex; flex-direction: column; }
-.chart-card canvas { width: 100%; display: block; height: 100%; }
+.charts-grid .chart-card { height: 420px; display: flex; flex-direction: column; overflow: hidden; }
+.chart-card canvas { width: 100%; display: block; flex: 1; height: auto; }
 .card-texture { position: absolute; inset: 0; border-radius: 12px; pointer-events: none; background: radial-gradient(75% 75% at 20% 10%, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0) 60%), radial-gradient(65% 65% at 80% 90%, rgba(0,0,0,0.08) 0%, rgba(0,0,0,0) 70%); mix-blend-mode: overlay; }
 
 @media (max-width: 768px) {
   .charts-grid { grid-template-columns: 1fr; }
-  .charts-grid .chart-card { height: 320px; }
+  .charts-grid .chart-card { height: 360px; }
 }
 
 .chart-header {

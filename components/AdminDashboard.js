@@ -787,7 +787,7 @@ export function mount({ currentUser, navigate, showToast } = {}) {
         labels,
         datasets: [{ label: 'Estudiantes por carrera', data, backgroundColor: colors, borderWidth: 0 }]
       },
-      options: { responsive: true, maintainAspectRatio: false, resizeDelay: 150, plugins: { legend: { position: 'bottom', labels: { color: ct.text } }, tooltip: { backgroundColor: ct.tooltipBg, titleColor: ct.text, bodyColor: ct.text, borderColor: ct.tooltipBorder, borderWidth: 1 } } }
+      options: { responsive: true, maintainAspectRatio: false, resizeDelay: 150, layout: { padding: { top: 8, bottom: 20, left: 8, right: 8 } }, plugins: { legend: { position: 'bottom', labels: { color: ct.text, boxWidth: 10, padding: 12, font: { size: 12 } } }, tooltip: { backgroundColor: ct.tooltipBg, titleColor: ct.text, bodyColor: ct.text, borderColor: ct.tooltipBorder, borderWidth: 1 } } }
     });
 
     // Gráfico de barras: registros diarios por rol (últimos 7 días)
@@ -821,8 +821,9 @@ export function mount({ currentUser, navigate, showToast } = {}) {
           responsive: true,
           maintainAspectRatio: false,
           resizeDelay: 150,
-          scales: { x: { ticks: { color: ct.text }, grid: { color: ct.grid } }, y: { beginAtZero: true, ticks: { precision: 0, color: ct.text }, grid: { color: ct.grid } } },
-          plugins: { legend: { position: 'top', align: 'start', labels: { color: ct.text } }, tooltip: { backgroundColor: ct.tooltipBg, titleColor: ct.text, bodyColor: ct.text, borderColor: ct.tooltipBorder, borderWidth: 1 } }
+          layout: { padding: { top: 8, bottom: 18, left: 8, right: 8 } },
+          scales: { x: { ticks: { color: ct.text, padding: 4, font: { size: 12 } }, grid: { color: ct.grid } }, y: { beginAtZero: true, ticks: { precision: 0, color: ct.text, padding: 4, font: { size: 12 } }, grid: { color: ct.grid } } },
+          plugins: { legend: { position: 'top', align: 'start', labels: { color: ct.text, boxWidth: 10, padding: 10, font: { size: 12 } } }, tooltip: { backgroundColor: ct.tooltipBg, titleColor: ct.text, bodyColor: ct.text, borderColor: ct.tooltipBorder, borderWidth: 1 } }
         }
       });
     }
