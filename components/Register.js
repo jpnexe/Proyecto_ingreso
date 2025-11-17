@@ -51,7 +51,7 @@ export function render() {
                 <div class="uniguajira-content">
                     <div class="uniguajira-login-form">
                         <div class="login-logo">
-                            <img src="./img/logo uniguajira.png" alt="Logo Universidad de La Guajira" class="logo-image">
+                            <img src="./img/mi_ingreso.jpg" alt="Mi ingreso" class="logo-image">
                         </div>
                         <h2>Registro de Usuario</h2>
                         <div class="login-subtitle">Crea tu cuenta en la Universidad</div>

@@ -172,6 +172,7 @@ body {
 
 .nav-item i {
   font-size: 20px;
+  margin-right: 8px;
 }
 
 .nav-label {
@@ -283,8 +284,8 @@ body {
   backdrop-filter: blur(12px);
   box-shadow: 0 8px 24px var(--shadow-color);
   transition: background 0.25s ease, color 0.25s ease, border-color 0.25s ease;
-  position: relative; /* asegura contexto y control de z-index */
-  z-index: 2000; /* por encima de sidebar y overlays estándar */
+  position: relative;
+  z-index: 1;
 }
 
 /* Adaptación a temas */
@@ -904,13 +905,19 @@ body.modal-open { overflow: hidden; }
     top: 100%;
     left: 0;
     right: 0;
-    background-color: var(--sidebar-bg);
+    background-color: var(--modal-bg-dark);
     border-bottom: 1px solid var(--border-color);
-    padding: 10px 12px;
+    padding: 12px 14px;
     box-shadow: 0 8px 16px var(--shadow-color);
     z-index: 1100;
     flex-direction: column;
-    gap: 6px;
+    gap: 8px;
+    backdrop-filter: saturate(1.1) blur(10px);
+  }
+
+  [data-theme="light"] .sidebar-nav {
+    background-color: var(--modal-bg-light);
+    border-bottom-color: rgba(31,41,55,0.18);
   }
 
   .sidebar.menu-open .sidebar-nav {
@@ -921,6 +928,7 @@ body.modal-open { overflow: hidden; }
   .nav-item {
     padding: 10px 12px;
     border-radius: 8px;
+    background: rgba(255,255,255,0.08);
   }
 
   .nav-item i {

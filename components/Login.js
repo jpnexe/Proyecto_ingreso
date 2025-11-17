@@ -4,18 +4,14 @@ export function render() {
     return `
         <div class="uniguajira-header">
             <div class="uniguajira-logo">
-                <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
-                    <rect width="40" height="40" rx="8" fill="white"/>
-                    <path d="M8 12h24v16H8z" fill="#4CAF50"/>
-                    <text x="20" y="22" text-anchor="middle" fill="white" font-size="10" font-weight="bold">UG</text>
-                </svg>
+                <img src="./img/mi_ingreso.jpg" alt="Mi ingreso" class="logo-image" />
                 <span class="logo-text">Mi ingreso</span>
             </div>
             <div class="uniguajira-nav desktop-nav">
                 <a href="#" class="login-nav-item">Inicio</a>
                 <a href="#" class="login-nav-item">Nosotros</a>
                 <a href="#" class="login-nav-item">Interes</a>
-                <a href="#" class="login-nav-item">Universidad</a>
+                <a href="https://uniguajira.edu.co" class="login-nav-item">Universidad</a>
                 <div class="theme-switch">
                     <input type="checkbox" id="theme-toggle">
                     <label for="theme-toggle">

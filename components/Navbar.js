@@ -15,9 +15,9 @@ export function renderNavbar(currentUser, activeRoute) {
   }
   
   return `
-    <div class="navbar-inner">
+      <div class="navbar-inner">
       <div class="brand">
-        <div class="logo"></div>
+        <img src="./img/mi_ingreso.jpg" alt="Mi ingreso" class="logo-image" />
         <div>
           <div>Universidad</div>
           <div class="small">Portal institucional</div>
