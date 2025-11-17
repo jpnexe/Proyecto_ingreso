@@ -595,6 +595,28 @@ export async function listReservas(userId) {
   }));
 }
 
+export async function deleteReserva(reservaId, userId = null) {
+  await ensureSQLite();
+  if (!reservaId) throw new Error('ID de reserva requerido');
+  const r = all('SELECT id, user_id FROM reservas WHERE id=? LIMIT 1', [reservaId])[0];
+  if (!r) throw new Error('Reserva no encontrada');
+  if (userId && Number(r.user_id) !== Number(userId)) throw new Error('No autorizado para eliminar esta reserva');
+  run('DELETE FROM reservas WHERE id=?', [reservaId]);
+  await saveSQLite();
+  window.dispatchEvent(new CustomEvent('dbchange', { detail: { type: 'reservas', id: reservaId, deleted: true } }));
+}
+
+export async function cancelReserva(reservaId, userId = null) {
+  await ensureSQLite();
+  if (!reservaId) throw new Error('ID de reserva requerido');
+  const r = all('SELECT id, user_id FROM reservas WHERE id=? LIMIT 1', [reservaId])[0];
+  if (!r) throw new Error('Reserva no encontrada');
+  if (userId && Number(r.user_id) !== Number(userId)) throw new Error('No autorizado para cancelar esta reserva');
+  run("UPDATE reservas SET status='cancelada' WHERE id=?", [reservaId]);
+  await saveSQLite();
+  window.dispatchEvent(new CustomEvent('dbchange', { detail: { type: 'reservas', id: reservaId, status: 'cancelada' } }));
+}
+
 export async function listAnnouncements() {
   await ensureSQLite();
   const rows = all('SELECT id, title, body, created_at, author_id FROM announcements ORDER BY created_at DESC');

@@ -2799,6 +2799,7 @@ body {
 }
 
 .visitor-reservas-card .reservas-list { display: flex; flex-direction: column; gap: 0.75rem; }
+.visitor-reservas-card .reservas-list .btn-sm { padding: 6px 10px; font-size: 0.85rem; border-radius: 10px; }
 
 .visit-history { max-height: 300px; overflow-y: auto; }
 .history-item { margin-bottom: 12px; padding: 12px; border-left: 4px solid transparent; border-radius: 8px; background: rgba(255, 255, 255, 0.06); }
@@ -2921,6 +2922,12 @@ body {
   color: var(--text-primary, #ffffff);
   caret-color: var(--text-primary, #ffffff);
 }
+
+/* Legibilidad específica del select en Visitantes */
+.visitor-form-card select.input { background: rgba(255, 255, 255, 0.96); color: #1f2937; border-color: rgba(31, 41, 55, 0.18); }
+.visitor-form-card select.input option { color: #1f2937; background: #ffffff; }
+[data-theme="dark"] .visitor-form-card select.input { background: rgba(18, 20, 28, 0.92); color: #ffffff; border-color: rgba(255, 255, 255, 0.25); }
+[data-theme="dark"] .visitor-form-card select.input option { color: #ffffff; background: #0f121a; }
 .form .label {
   display: block;
   margin-bottom: 0.4rem;

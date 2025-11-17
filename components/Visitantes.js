@@ -1,4 +1,4 @@
-import { createReserva, listReservas, updateUser, listEntriesByUser, ensureAutoExitForUser } from '../js/db.js';
+import { createReserva, listReservas, updateUser, listEntriesByUser, ensureAutoExitForUser, deleteReserva, cancelReserva } from '../js/db.js';
 
 export function render({ currentUser }) {
   return `
@@ -204,11 +204,33 @@ export function mount({ currentUser, navigate, showToast }) {
       const card = document.createElement('div');
       card.className = 'glass card';
       const d = new Date(r.date);
+      const statusBadge = (r.status && r.status !== 'pendiente') ? `<span class="badge" style="margin-left:8px;">${r.status}</span>` : '';
       card.innerHTML = `
-        <div><strong>${r.day}</strong> · ${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+          <div>
+            <strong>${r.day}</strong> · ${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            ${statusBadge}
+          </div>
+          <div style="display:flex; gap:6px;">
+            <button class="btn btn-red btn-sm" data-act="delete">Eliminar</button>
+          </div>
+        </div>
         <div class="small">Motivo: ${r.motivo}</div>
       `;
       container.appendChild(card);
+      const delBtn = card.querySelector('button[data-act="delete"]');
+      if (delBtn) {
+        delBtn.addEventListener('click', async () => {
+          try {
+            if (!confirm('¿Eliminar esta reserva?')) return;
+            await deleteReserva(r.id, userId);
+            showModal('Reserva eliminada', 'success');
+            await loadReservas(userId);
+          } catch (err) {
+            showModal(err.message || 'No se pudo eliminar la reserva', 'error');
+          }
+        });
+      }
     }
   }
 

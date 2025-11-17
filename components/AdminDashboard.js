@@ -645,6 +645,22 @@ export function mount({ currentUser, navigate, showToast } = {}) {
               <input type="file" id="import-sqlite-file" accept=".sqlite,application/octet-stream" style="display:none" />
             </label>
             <p class="muted">Exporta/Importa todo: usuarios, reservas, anuncios, logs y tareas.</p>
+            <hr style="margin:12px 0; opacity:0.2;" />
+            <h4>Importación masiva (CSV)</h4>
+            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+              <label>Tipo de datos</label>
+              <select id="bulk-type" class="input" style="max-width:220px;">
+                <option value="estudiante">Estudiantes</option>
+                <option value="visitante">Visitantes</option>
+              </select>
+              <button id="bulk-template-btn" class="btn btn-sm">Descargar plantilla CSV</button>
+              <label class="btn btn-sm" style="display:inline-block;">
+                Importar CSV
+                <input type="file" id="bulk-csv-file" accept=".csv,text/csv" style="display:none" />
+              </label>
+            </div>
+            <div id="bulk-format-hint" class="small muted" style="margin-top:8px;"></div>
+            <div id="bulk-result" class="small" style="margin-top:8px;"></div>
           </div>
           <div class="setting-card">
             <h4>Calendario</h4>
@@ -2545,6 +2561,11 @@ export function mount({ currentUser, navigate, showToast } = {}) {
   const initAjustes = () => {
     const exportBtn = document.getElementById('export-sqlite-btn');
     const importFile = document.getElementById('import-sqlite-file');
+    const bulkTypeEl = document.getElementById('bulk-type');
+    const bulkTplBtn = document.getElementById('bulk-template-btn');
+    const bulkFile = document.getElementById('bulk-csv-file');
+    const bulkHint = document.getElementById('bulk-format-hint');
+    const bulkResult = document.getElementById('bulk-result');
     const migrateBtn = document.getElementById('migrate-tasks-btn');
     const dualToggle = document.getElementById('dual-write-toggle');
     const compareBtn = document.getElementById('compare-db-btn');
@@ -2597,6 +2618,97 @@ export function mount({ currentUser, navigate, showToast } = {}) {
         } finally {
           e.target.value = '';
         }
+      });
+    }
+
+    function setBulkHint() {
+      const t = (bulkTypeEl?.value || 'estudiante');
+      if (!bulkHint) return;
+      if (t === 'estudiante') {
+        bulkHint.textContent = 'Formato CSV: name,email,password,career,semester,status,user_code (encabezados incluidos). Si password está vacío, se genera automáticamente. user_code opcional.';
+      } else {
+        bulkHint.textContent = 'Formato CSV: name,email,password,visitReason,status,user_code (encabezados incluidos). Si password está vacío, se genera automáticamente. user_code opcional.';
+      }
+    }
+    setBulkHint();
+    if (bulkTypeEl) bulkTypeEl.addEventListener('change', setBulkHint);
+
+    function downloadCSV(filename, text) {
+      const blob = new Blob([text], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = filename; a.click(); setTimeout(()=>URL.revokeObjectURL(url), 5000);
+    }
+    function sampleFor(type) {
+      if (type === 'visitante') {
+        return 'name,email,password,visitReason,status,user_code\nJuan Visitante,juan@example.com,,Visita académica,activo,UV-1001\nAna Visitante,ana@example.com,,Evento,activo,UV-1002\n';
+      }
+      return 'name,email,password,career,semester,status,user_code\nCarlos Estudiante,carlos@example.com,,Ingeniería en sistemas,4,activo,UG-2001\nLuisa Estudiante,luisa@example.com,,Administración de Empresas,2,activo,UG-2002\n';
+    }
+    if (bulkTplBtn) bulkTplBtn.addEventListener('click', () => { const t = bulkTypeEl?.value || 'estudiante'; downloadCSV(`plantilla_${t}.csv`, sampleFor(t)); });
+
+    function parseCSV(text) {
+      const lines = text.split(/\r?\n/).filter(l => l.trim().length);
+      const header = lines.shift().split(',').map(h => h.trim());
+      return lines.map(line => {
+        const cells = [];
+        let cur = ''; let inQ = false;
+        for (let i=0; i<line.length; i++) {
+          const ch = line[i];
+          if (ch === '"') { inQ = !inQ; continue; }
+          if (ch === ',' && !inQ) { cells.push(cur); cur = ''; } else { cur += ch; }
+        }
+        cells.push(cur);
+        const obj = {}; header.forEach((h, idx) => obj[h] = (cells[idx]||'').trim());
+        return obj;
+      });
+    }
+    function randPass() { return Math.random().toString(36).slice(2, 10); }
+
+    async function handleBulk(type, file) {
+      bulkResult.textContent = 'Importando...';
+      const text = await file.text();
+      const rows = parseCSV(text);
+      let created = 0, updated = 0, failed = 0;
+      for (const r of rows) {
+        try {
+          const email = String(r.email||'').toLowerCase();
+          if (!email || !r.name) { failed++; continue; }
+          const pass = r.password ? r.password : randPass();
+          const current = await getUserByEmail(email);
+          if (!current) {
+            if (type === 'estudiante') {
+              const newId = await registerUser({ name: r.name, email, password: pass, role: 'estudiante', career: r.career||'', semester: r.semester||'', status: r.status||'activo' });
+              if (r.user_code) await updateUser(newId, { userCode: r.user_code });
+            } else {
+              const id = await registerUser({ name: r.name, email, password: pass, role: 'visitante', career: '', semester: '', status: r.status||'activo' });
+              const patch = {};
+              if (r.visitReason) patch.visitReason = r.visitReason;
+              if (r.user_code) patch.userCode = r.user_code;
+              if (Object.keys(patch).length) await updateUser(id, patch);
+            }
+            created++;
+          } else {
+            const patch = { name: r.name };
+            if (r.password) patch.password = r.password;
+            if (type === 'estudiante') { patch.career = r.career||''; patch.semester = r.semester||''; }
+            if (type === 'visitante' && r.visitReason) { patch.visitReason = r.visitReason; }
+            if (r.status) patch.status = r.status;
+            if (r.user_code) patch.userCode = r.user_code;
+            await updateUser(current.id, patch);
+            updated++;
+          }
+        } catch (e) {
+          failed++;
+        }
+      }
+      bulkResult.textContent = `Completado. Nuevos: ${created}, Actualizados: ${updated}, Fallidos: ${failed}.`;
+      localStorage.setItem('adminLastSection', 'ajustes');
+    }
+    if (bulkFile) {
+      bulkFile.addEventListener('change', async (e) => {
+        const f = e.target.files?.[0]; if (!f) return;
+        const t = bulkTypeEl?.value || 'estudiante';
+        try { await handleBulk(t, f); if (typeof showToast === 'function') showToast('Importación CSV completada', 'success'); } catch (err) { if (typeof showToast === 'function') showToast('Error al importar CSV', 'error'); }
       });
     }
     if (migrateBtn) {
