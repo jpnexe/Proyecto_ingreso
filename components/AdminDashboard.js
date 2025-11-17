@@ -579,6 +579,11 @@ export function mount({ currentUser, navigate, showToast } = {}) {
                 <div id="sd-role"></div>
                 <label>Código</label>
                 <div id="sd-code" class="chip chip--code"></div>
+                <label>QR</label>
+                <div>
+                  <img id="sd-qr" alt="QR del estudiante" style="width:120px;height:120px;border-radius:8px;border:1px solid rgba(255,255,255,0.12);display:none;" />
+                  <div class="small" style="opacity:0.8;margin-top:4px;">Escanéalo para registrar ingreso</div>
+                </div>
                 <label>Estado</label>
                 <div id="sd-status"></div>
                 <label>Carrera</label>
@@ -787,7 +792,7 @@ export function mount({ currentUser, navigate, showToast } = {}) {
         labels,
         datasets: [{ label: 'Estudiantes por carrera', data, backgroundColor: colors, borderWidth: 0 }]
       },
-      options: { responsive: true, maintainAspectRatio: false, resizeDelay: 150, layout: { padding: { top: 8, bottom: 20, left: 8, right: 8 } }, plugins: { legend: { position: 'bottom', labels: { color: ct.text, boxWidth: 10, padding: 12, font: { size: 12 } } }, tooltip: { backgroundColor: ct.tooltipBg, titleColor: ct.text, bodyColor: ct.text, borderColor: ct.tooltipBorder, borderWidth: 1 } } }
+      options: { responsive: true, maintainAspectRatio: false, resizeDelay: 150, layout: { padding: { top: 8, bottom: 28, left: 8, right: 8 } }, plugins: { legend: { position: 'bottom', labels: { color: ct.text, boxWidth: 10, padding: 12, font: { size: 12 } } }, tooltip: { backgroundColor: ct.tooltipBg, titleColor: ct.text, bodyColor: ct.text, borderColor: ct.tooltipBorder, borderWidth: 1 } } }
     });
 
     // Gráfico de barras: registros diarios por rol (últimos 7 días)
@@ -1155,7 +1160,7 @@ export function mount({ currentUser, navigate, showToast } = {}) {
     new Chart(usersCanvas.getContext('2d'), {
       type: 'doughnut',
       data: { labels: ['Visitantes','Estudiantes','Administradores'], datasets: [{ label: 'Usuarios', data: [baseStats.visitantes||0, baseStats.estudiantes||0, baseStats.admins||0], backgroundColor: ['#3498db','#2ecc71','#e74c3c'] }] },
-      options: { responsive: true, maintainAspectRatio: true, aspectRatio: 1.1, plugins: { legend: { position: 'bottom', labels: { color: ct.text } }, tooltip: { backgroundColor: ct.tooltipBg, titleColor: ct.text, bodyColor: ct.text, borderColor: ct.tooltipBorder, borderWidth: 1 } } }
+      options: { responsive: true, maintainAspectRatio: false, layout: { padding: { top: 8, bottom: 28, left: 8, right: 8 } }, plugins: { legend: { position: 'bottom', labels: { color: ct.text, boxWidth: 10, padding: 12, font: { size: 12 } } }, tooltip: { backgroundColor: ct.tooltipBg, titleColor: ct.text, bodyColor: ct.text, borderColor: ct.tooltipBorder, borderWidth: 1 } } }
     });
     const entryStats = await getDailyEntryStats(7);
     const labels = entryStats.labels.map(s => new Date(s + 'T00:00:00').toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }));
@@ -1169,7 +1174,7 @@ export function mount({ currentUser, navigate, showToast } = {}) {
           { label: 'Administradores', data: entryStats.admins, borderColor: '#e74c3c', backgroundColor: 'rgba(231,76,60,0.2)', tension: 0.35 }
         ]
       },
-      options: { responsive: true, maintainAspectRatio: true, aspectRatio: 1.3, scales: { x: { ticks: { color: ct.text }, grid: { color: ct.grid } }, y: { beginAtZero: true, ticks: { precision: 0, color: ct.text }, grid: { color: ct.grid } } }, plugins: { legend: { position: 'top', align: 'start', labels: { color: ct.text } }, tooltip: { backgroundColor: ct.tooltipBg, titleColor: ct.text, bodyColor: ct.text, borderColor: ct.tooltipBorder, borderWidth: 1 } } }
+      options: { responsive: true, maintainAspectRatio: false, layout: { padding: { top: 8, bottom: 24, left: 8, right: 8 } }, scales: { x: { ticks: { color: ct.text, padding: 6, maxRotation: 0, autoSkipPadding: 24, font: { size: 12 } }, grid: { color: ct.grid } }, y: { beginAtZero: true, ticks: { precision: 0, color: ct.text, padding: 6, font: { size: 12 } }, grid: { color: ct.grid } } }, plugins: { legend: { position: 'top', align: 'start', labels: { color: ct.text, boxWidth: 10, padding: 10, font: { size: 12 } } }, tooltip: { backgroundColor: ct.tooltipBg, titleColor: ct.text, bodyColor: ct.text, borderColor: ct.tooltipBorder, borderWidth: 1 } } }
     });
     if (entryExitCanvas) {
       const exStats = await getEntryExitStats(7);
@@ -1177,7 +1182,7 @@ export function mount({ currentUser, navigate, showToast } = {}) {
       new Chart(entryExitCanvas.getContext('2d'), {
         type: 'bar',
         data: { labels: exLabels, datasets: [ { label: 'Entradas', data: exStats.entries, backgroundColor: '#2ecc71' }, { label: 'Salidas', data: exStats.exits, backgroundColor: '#e74c3c' } ] },
-        options: { responsive: true, maintainAspectRatio: true, aspectRatio: 1.2, scales: { x: { stacked: true, ticks: { color: ct.text }, grid: { color: ct.grid } }, y: { stacked: true, beginAtZero: true, ticks: { precision: 0, color: ct.text }, grid: { color: ct.grid } } }, plugins: { legend: { position: 'top', labels: { color: ct.text } }, tooltip: { backgroundColor: ct.tooltipBg, titleColor: ct.text, bodyColor: ct.text, borderColor: ct.tooltipBorder, borderWidth: 1 } } }
+        options: { responsive: true, maintainAspectRatio: false, layout: { padding: { top: 8, bottom: 24, left: 8, right: 8 } }, scales: { x: { stacked: true, ticks: { color: ct.text, padding: 6, font: { size: 12 } }, grid: { color: ct.grid } }, y: { stacked: true, beginAtZero: true, ticks: { precision: 0, color: ct.text, padding: 6, font: { size: 12 } }, grid: { color: ct.grid } } }, plugins: { legend: { position: 'top', labels: { color: ct.text, boxWidth: 10, padding: 10, font: { size: 12 } } }, tooltip: { backgroundColor: ct.tooltipBg, titleColor: ct.text, bodyColor: ct.text, borderColor: ct.tooltipBorder, borderWidth: 1 } } }
       });
     }
     if (hourlyCanvas) {
@@ -1187,7 +1192,7 @@ export function mount({ currentUser, navigate, showToast } = {}) {
       new Chart(hourlyCanvas.getContext('2d'), {
         type: 'bar',
         data: { labels: hStats.labels, datasets: [ { label: 'Ingresos por hora', data: hStats.entries, backgroundColor: colors } ] },
-        options: { responsive: true, maintainAspectRatio: true, aspectRatio: 1.2, scales: { x: { ticks: { color: ct.text }, grid: { color: ct.grid } }, y: { beginAtZero: true, ticks: { precision: 0, color: ct.text }, grid: { color: ct.grid } } }, plugins: { legend: { labels: { color: ct.text } }, tooltip: { backgroundColor: ct.tooltipBg, titleColor: ct.text, bodyColor: ct.text, borderColor: ct.tooltipBorder, borderWidth: 1 } } }
+        options: { responsive: true, maintainAspectRatio: false, layout: { padding: { top: 8, bottom: 24, left: 8, right: 8 } }, scales: { x: { ticks: { color: ct.text, padding: 6, font: { size: 12 } }, grid: { color: ct.grid } }, y: { beginAtZero: true, ticks: { precision: 0, color: ct.text, padding: 6, font: { size: 12 } }, grid: { color: ct.grid } } }, plugins: { legend: { labels: { color: ct.text } }, tooltip: { backgroundColor: ct.tooltipBg, titleColor: ct.text, bodyColor: ct.text, borderColor: ct.tooltipBorder, borderWidth: 1 } } }
       });
     }
     if (statusByRoleCanvas) {
@@ -1198,7 +1203,7 @@ export function mount({ currentUser, navigate, showToast } = {}) {
       new Chart(statusByRoleCanvas.getContext('2d'), {
         type: 'bar',
         data: { labels: ['Estudiantes','Visitantes','Administradores'], datasets: [ { label: 'Activo', data: activos, backgroundColor: '#2ecc71' }, { label: 'Inactivo', data: inactivos, backgroundColor: '#f1c40f' } ] },
-        options: { responsive: true, maintainAspectRatio: true, aspectRatio: 1.2, indexAxis: 'y', scales: { x: { stacked: true, beginAtZero: true, ticks: { precision: 0, color: ct.text }, grid: { color: ct.grid } }, y: { stacked: true, ticks: { color: ct.text }, grid: { color: ct.grid } } }, plugins: { legend: { position: 'top', labels: { color: ct.text } }, tooltip: { backgroundColor: ct.tooltipBg, titleColor: ct.text, bodyColor: ct.text, borderColor: ct.tooltipBorder, borderWidth: 1 } } }
+        options: { responsive: true, maintainAspectRatio: false, layout: { padding: { top: 8, bottom: 24, left: 8, right: 8 } }, indexAxis: 'y', scales: { x: { stacked: true, beginAtZero: true, ticks: { precision: 0, color: ct.text, padding: 6, font: { size: 12 } }, grid: { color: ct.grid } }, y: { stacked: true, ticks: { color: ct.text, padding: 6, font: { size: 12 } }, grid: { color: ct.grid } } }, plugins: { legend: { position: 'top', labels: { color: ct.text, boxWidth: 10, padding: 10, font: { size: 12 } } }, tooltip: { backgroundColor: ct.tooltipBg, titleColor: ct.text, bodyColor: ct.text, borderColor: ct.tooltipBorder, borderWidth: 1 } } }
       });
     }
   };
@@ -1561,11 +1566,11 @@ export function mount({ currentUser, navigate, showToast } = {}) {
           qrEl.style.display = 'none';
         }
       }
-      modal.classList.remove('hidden');
+      modal.classList.remove('hidden'); document.body.classList.add('modal-open');
     };
 
     const closeModal = () => {
-      modal.classList.add('hidden');
+      modal.classList.add('hidden'); document.body.classList.remove('modal-open');
     };
 
     const openStudentDetail = async (u) => {
@@ -1583,6 +1588,7 @@ export function mount({ currentUser, navigate, showToast } = {}) {
       const lastEntryEl = document.getElementById('sd-lastEntry');
       const avgDayEl = document.getElementById('sd-avgDay');
       const entriesUl = document.getElementById('sd-entries');
+      const qrImg = document.getElementById('sd-qr');
 
       const full = await getUserById(u.id);
       if (nameEl) nameEl.textContent = full?.name || u.name || '';
@@ -1590,6 +1596,10 @@ export function mount({ currentUser, navigate, showToast } = {}) {
       if (roleEl) roleEl.textContent = roleLabel(full?.role || u.role);
       const codeVal = (full?.userCode || u.userCode || '').trim() || (u.role === 'estudiante' ? `UG-${u.id}` : (u.role === 'visitante' ? `UV-${u.id}` : ''));
       if (codeEl) codeEl.textContent = codeVal || '';
+      if (qrImg) {
+        if (codeVal) { qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(codeVal)}`; qrImg.style.display = 'block'; }
+        else { qrImg.src = ''; qrImg.style.display = 'none'; }
+      }
       if (statusEl) statusEl.textContent = full?.status || u.status || '';
       if (careerEl) careerEl.textContent = full?.career || u.career || 'Sin carrera';
       if (semesterEl) semesterEl.textContent = full?.semester || u.semester || '';
@@ -1620,7 +1630,7 @@ export function mount({ currentUser, navigate, showToast } = {}) {
         }).join('');
       }
 
-      studentDetailModal.classList.remove('hidden');
+      studentDetailModal.classList.remove('hidden'); document.body.classList.add('modal-open');
     };
 
     const refreshFilterOptions = () => {
@@ -1904,7 +1914,7 @@ export function mount({ currentUser, navigate, showToast } = {}) {
     });
     closeBtn.addEventListener('click', closeModal);
     modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
-    if (studentDetailClose) studentDetailClose.addEventListener('click', () => { if (studentDetailModal) studentDetailModal.classList.add('hidden'); });
+    if (studentDetailClose) studentDetailClose.addEventListener('click', () => { if (studentDetailModal) studentDetailModal.classList.add('hidden'); document.body.classList.remove('modal-open'); });
     if (studentDetailModal) studentDetailModal.addEventListener('click', (e) => { if (e.target === studentDetailModal) studentDetailModal.classList.add('hidden'); });
 
     // Añadir nuevo usuario
