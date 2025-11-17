@@ -10,8 +10,8 @@ export function render() {
           <span>Mi ingreso dashboard</span>
         </div>
         <nav class="sidebar-nav">
-          <a href="#" class="nav-item" data-section="buscar"><i class="fas fa-search"></i><span class="nav-label">Buscar</span></a>
           <a href="#" class="nav-item active" data-section="inicio"><i class="fas fa-home"></i><span class="nav-label">Inicio</span></a>
+          <a href="#" class="nav-item" data-section="buscar"><i class="fas fa-search"></i><span class="nav-label">Buscar</span></a>
           <a href="#" class="nav-item" data-section="reportes"><i class="fas fa-flag"></i><span class="nav-label">Reportes</span></a>
           <a href="#" class="nav-item" data-section="estadisticas"><i class="fas fa-chart-pie"></i><span class="nav-label">Estadísticas</span></a>
           <a href="#" class="nav-item" data-section="mensajes"><i class="fas fa-envelope"></i><span class="nav-label">Mensajes</span></a>
@@ -79,8 +79,8 @@ export function render() {
             </div>
           </section>
           <section class="charts-grid">
-            <div class="chart-card"><div class="chart-header"><h3>Registros diarios por rol</h3><button class="chart-settings"><i class="fas fa-cog"></i></button></div><canvas id="daily-role-registrations-chart"></canvas></div>
-            <div class="chart-card"><div class="chart-header"><h3>Estudiantes por carrera</h3><button class="chart-settings"><i class="fas fa-cog"></i></button></div><canvas id="career-distribution-chart"></canvas></div>
+            <div class="chart-card"><div class="card-texture"></div><div class="chart-header"><h3>Registros diarios por rol</h3><button class="chart-settings"><i class="fas fa-cog"></i></button></div><canvas id="daily-role-registrations-chart"></canvas></div>
+            <div class="chart-card"><div class="card-texture"></div><div class="chart-header"><h3>Estudiantes por carrera</h3><button class="chart-settings"><i class="fas fa-cog"></i></button></div><canvas id="career-distribution-chart"></canvas></div>
           </section>
           <section class="recent-customers">
             <div class="recent-customers-header"><h3>Usuarios recientes</h3><button class="chart-settings"><i class="fas fa-cog"></i></button></div>
@@ -260,8 +260,8 @@ export function mount({ currentUser, navigate, showToast } = {}) {
         <div class="kpi-card clickable" id="kpi-register-exit"><div class="kpi-header"><span>Registrar salida</span><i class="fas fa-sign-out-alt"></i></div><div class="kpi-value">QR / Código</div><div class="kpi-change positive">Nuevo</div></div>
       </section>
       <section class="charts-grid">
-        <div class="chart-card"><div class="chart-header"><h3>Registros diarios por rol</h3><button class="chart-settings"><i class="fas fa-cog"></i></button></div><canvas id="daily-role-registrations-chart"></canvas></div>
-        <div class="chart-card"><div class="chart-header"><h3>Estudiantes por carrera</h3><button class="chart-settings"><i class="fas fa-cog"></i></button></div><canvas id="career-distribution-chart"></canvas></div>
+        <div class="chart-card"><div class="card-texture"></div><div class="chart-header"><h3>Registros diarios por rol</h3><button class="chart-settings"><i class="fas fa-cog"></i></button></div><canvas id="daily-role-registrations-chart"></canvas></div>
+        <div class="chart-card"><div class="card-texture"></div><div class="chart-header"><h3>Estudiantes por carrera</h3><button class="chart-settings"><i class="fas fa-cog"></i></button></div><canvas id="career-distribution-chart"></canvas></div>
       </section>
       <section class="recent-customers">
         <div class="recent-customers-header"><h3>Usuarios recientes</h3><button class="chart-settings"><i class="fas fa-cog"></i></button></div>
@@ -787,7 +787,7 @@ export function mount({ currentUser, navigate, showToast } = {}) {
         labels,
         datasets: [{ label: 'Estudiantes por carrera', data, backgroundColor: colors, borderWidth: 0 }]
       },
-      options: { responsive: true, maintainAspectRatio: true, aspectRatio: 1.2, resizeDelay: 150, plugins: { legend: { position: 'bottom', labels: { color: ct.text } }, tooltip: { backgroundColor: ct.tooltipBg, titleColor: ct.text, bodyColor: ct.text, borderColor: ct.tooltipBorder, borderWidth: 1 } } }
+      options: { responsive: true, maintainAspectRatio: false, resizeDelay: 150, plugins: { legend: { position: 'bottom', labels: { color: ct.text } }, tooltip: { backgroundColor: ct.tooltipBg, titleColor: ct.text, bodyColor: ct.text, borderColor: ct.tooltipBorder, borderWidth: 1 } } }
     });
 
     // Gráfico de barras: registros diarios por rol (últimos 7 días)
@@ -819,8 +819,7 @@ export function mount({ currentUser, navigate, showToast } = {}) {
         },
         options: {
           responsive: true,
-          maintainAspectRatio: true,
-          aspectRatio: 1.6,
+          maintainAspectRatio: false,
           resizeDelay: 150,
           scales: { x: { ticks: { color: ct.text }, grid: { color: ct.grid } }, y: { beginAtZero: true, ticks: { precision: 0, color: ct.text }, grid: { color: ct.grid } } },
           plugins: { legend: { position: 'top', align: 'start', labels: { color: ct.text } }, tooltip: { backgroundColor: ct.tooltipBg, titleColor: ct.text, bodyColor: ct.text, borderColor: ct.tooltipBorder, borderWidth: 1 } }
@@ -1126,11 +1125,11 @@ export function mount({ currentUser, navigate, showToast } = {}) {
       salesChart.options.aspectRatio = lineRatio;
       salesChart.resize();
     }
-    if (categoriesChart) {
+    if (categoriesChart && categoriesChart.options.maintainAspectRatio !== false) {
       categoriesChart.options.aspectRatio = doughnutRatio;
       categoriesChart.resize();
     }
-    if (dailyRegsChart) {
+    if (dailyRegsChart && dailyRegsChart.options.maintainAspectRatio !== false) {
       dailyRegsChart.options.aspectRatio = barRatio;
       dailyRegsChart.resize();
     }
@@ -1995,7 +1994,7 @@ export function mount({ currentUser, navigate, showToast } = {}) {
     }, 200);
   };
 
-  const initialSection = localStorage.getItem('adminLastSection') || 'inicio';
+  const initialSection = 'inicio';
   renderSection(initialSection);
   navItems.forEach(item => item.addEventListener('click', (e) => { e.preventDefault(); renderSection(item.getAttribute('data-section')); }));
 
