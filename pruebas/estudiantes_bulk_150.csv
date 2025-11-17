@@ -1,0 +1,151 @@
+name,email,password,career,semester,status,user_code
+Estudiante 1,estudiante1@example.com,123456,Ingeniería en sistemas,1,activo,UG-20001
+Estudiante 2,estudiante2@example.com,123456,Administración de Empresas,2,activo,UG-20002
+Estudiante 3,estudiante3@example.com,123456,Contaduría Pública,3,activo,UG-20003
+Estudiante 4,estudiante4@example.com,123456,Trabajo social,4,activo,UG-20004
+Estudiante 5,estudiante5@example.com,123456,Licenciatura infantil,5,activo,UG-20005
+Estudiante 6,estudiante6@example.com,123456,Ingeniería en sistemas,6,activo,UG-20006
+Estudiante 7,estudiante7@example.com,123456,Administración de Empresas,7,activo,UG-20007
+Estudiante 8,estudiante8@example.com,123456,Contaduría Pública,8,activo,UG-20008
+Estudiante 9,estudiante9@example.com,123456,Trabajo social,9,activo,UG-20009
+Estudiante 10,estudiante10@example.com,123456,Licenciatura infantil,10,activo,UG-20010
+Estudiante 11,estudiante11@example.com,123456,Ingeniería en sistemas,1,activo,UG-20011
+Estudiante 12,estudiante12@example.com,123456,Administración de Empresas,2,activo,UG-20012
+Estudiante 13,estudiante13@example.com,123456,Contaduría Pública,3,activo,UG-20013
+Estudiante 14,estudiante14@example.com,123456,Trabajo social,4,activo,UG-20014
+Estudiante 15,estudiante15@example.com,123456,Licenciatura infantil,5,activo,UG-20015
+Estudiante 16,estudiante16@example.com,123456,Ingeniería en sistemas,6,activo,UG-20016
+Estudiante 17,estudiante17@example.com,123456,Administración de Empresas,7,activo,UG-20017
+Estudiante 18,estudiante18@example.com,123456,Contaduría Pública,8,activo,UG-20018
+Estudiante 19,estudiante19@example.com,123456,Trabajo social,9,activo,UG-20019
+Estudiante 20,estudiante20@example.com,123456,Licenciatura infantil,10,activo,UG-20020
+Estudiante 21,estudiante21@example.com,123456,Ingeniería en sistemas,1,activo,UG-20021
+Estudiante 22,estudiante22@example.com,123456,Administración de Empresas,2,activo,UG-20022
+Estudiante 23,estudiante23@example.com,123456,Contaduría Pública,3,activo,UG-20023
+Estudiante 24,estudiante24@example.com,123456,Trabajo social,4,activo,UG-20024
+Estudiante 25,estudiante25@example.com,123456,Licenciatura infantil,5,activo,UG-20025
+Estudiante 26,estudiante26@example.com,123456,Ingeniería en sistemas,6,activo,UG-20026
+Estudiante 27,estudiante27@example.com,123456,Administración de Empresas,7,activo,UG-20027
+Estudiante 28,estudiante28@example.com,123456,Contaduría Pública,8,activo,UG-20028
+Estudiante 29,estudiante29@example.com,123456,Trabajo social,9,activo,UG-20029
+Estudiante 30,estudiante30@example.com,123456,Licenciatura infantil,10,activo,UG-20030
+Estudiante 31,estudiante31@example.com,123456,Ingeniería en sistemas,1,activo,UG-20031
+Estudiante 32,estudiante32@example.com,123456,Administración de Empresas,2,activo,UG-20032
+Estudiante 33,estudiante33@example.com,123456,Contaduría Pública,3,activo,UG-20033
+Estudiante 34,estudiante34@example.com,123456,Trabajo social,4,activo,UG-20034
+Estudiante 35,estudiante35@example.com,123456,Licenciatura infantil,5,activo,UG-20035
+Estudiante 36,estudiante36@example.com,123456,Ingeniería en sistemas,6,activo,UG-20036
+Estudiante 37,estudiante37@example.com,123456,Administración de Empresas,7,activo,UG-20037
+Estudiante 38,estudiante38@example.com,123456,Contaduría Pública,8,activo,UG-20038
+Estudiante 39,estudiante39@example.com,123456,Trabajo social,9,activo,UG-20039
+Estudiante 40,estudiante40@example.com,123456,Licenciatura infantil,10,activo,UG-20040
+Estudiante 41,estudiante41@example.com,123456,Ingeniería en sistemas,1,activo,UG-20041
+Estudiante 42,estudiante42@example.com,123456,Administración de Empresas,2,activo,UG-20042
+Estudiante 43,estudiante43@example.com,123456,Contaduría Pública,3,activo,UG-20043
+Estudiante 44,estudiante44@example.com,123456,Trabajo social,4,activo,UG-20044
+Estudiante 45,estudiante45@example.com,123456,Licenciatura infantil,5,activo,UG-20045
+Estudiante 46,estudiante46@example.com,123456,Ingeniería en sistemas,6,activo,UG-20046
+Estudiante 47,estudiante47@example.com,123456,Administración de Empresas,7,activo,UG-20047
+Estudiante 48,estudiante48@example.com,123456,Contaduría Pública,8,activo,UG-20048
+Estudiante 49,estudiante49@example.com,123456,Trabajo social,9,activo,UG-20049
+Estudiante 50,estudiante50@example.com,123456,Licenciatura infantil,10,activo,UG-20050
+Estudiante 51,estudiante51@example.com,123456,Ingeniería en sistemas,1,activo,UG-20051
+Estudiante 52,estudiante52@example.com,123456,Administración de Empresas,2,activo,UG-20052
+Estudiante 53,estudiante53@example.com,123456,Contaduría Pública,3,activo,UG-20053
+Estudiante 54,estudiante54@example.com,123456,Trabajo social,4,activo,UG-20054
+Estudiante 55,estudiante55@example.com,123456,Licenciatura infantil,5,activo,UG-20055
+Estudiante 56,estudiante56@example.com,123456,Ingeniería en sistemas,6,activo,UG-20056
+Estudiante 57,estudiante57@example.com,123456,Administración de Empresas,7,activo,UG-20057
+Estudiante 58,estudiante58@example.com,123456,Contaduría Pública,8,activo,UG-20058
+Estudiante 59,estudiante59@example.com,123456,Trabajo social,9,activo,UG-20059
+Estudiante 60,estudiante60@example.com,123456,Licenciatura infantil,10,activo,UG-20060
+Estudiante 61,estudiante61@example.com,123456,Ingeniería en sistemas,1,activo,UG-20061
+Estudiante 62,estudiante62@example.com,123456,Administración de Empresas,2,activo,UG-20062
+Estudiante 63,estudiante63@example.com,123456,Contaduría Pública,3,activo,UG-20063
+Estudiante 64,estudiante64@example.com,123456,Trabajo social,4,activo,UG-20064
+Estudiante 65,estudiante65@example.com,123456,Licenciatura infantil,5,activo,UG-20065
+Estudiante 66,estudiante66@example.com,123456,Ingeniería en sistemas,6,activo,UG-20066
+Estudiante 67,estudiante67@example.com,123456,Administración de Empresas,7,activo,UG-20067
+Estudiante 68,estudiante68@example.com,123456,Contaduría Pública,8,activo,UG-20068
+Estudiante 69,estudiante69@example.com,123456,Trabajo social,9,activo,UG-20069
+Estudiante 70,estudiante70@example.com,123456,Licenciatura infantil,10,activo,UG-20070
+Estudiante 71,estudiante71@example.com,123456,Ingeniería en sistemas,1,activo,UG-20071
+Estudiante 72,estudiante72@example.com,123456,Administración de Empresas,2,activo,UG-20072
+Estudiante 73,estudiante73@example.com,123456,Contaduría Pública,3,activo,UG-20073
+Estudiante 74,estudiante74@example.com,123456,Trabajo social,4,activo,UG-20074
+Estudiante 75,estudiante75@example.com,123456,Licenciatura infantil,5,activo,UG-20075
+Estudiante 76,estudiante76@example.com,123456,Ingeniería en sistemas,6,activo,UG-20076
+Estudiante 77,estudiante77@example.com,123456,Administración de Empresas,7,activo,UG-20077
+Estudiante 78,estudiante78@example.com,123456,Contaduría Pública,8,activo,UG-20078
+Estudiante 79,estudiante79@example.com,123456,Trabajo social,9,activo,UG-20079
+Estudiante 80,estudiante80@example.com,123456,Licenciatura infantil,10,activo,UG-20080
+Estudiante 81,estudiante81@example.com,123456,Ingeniería en sistemas,1,activo,UG-20081
+Estudiante 82,estudiante82@example.com,123456,Administración de Empresas,2,activo,UG-20082
+Estudiante 83,estudiante83@example.com,123456,Contaduría Pública,3,activo,UG-20083
+Estudiante 84,estudiante84@example.com,123456,Trabajo social,4,activo,UG-20084
+Estudiante 85,estudiante85@example.com,123456,Licenciatura infantil,5,activo,UG-20085
+Estudiante 86,estudiante86@example.com,123456,Ingeniería en sistemas,6,activo,UG-20086
+Estudiante 87,estudiante87@example.com,123456,Administración de Empresas,7,activo,UG-20087
+Estudiante 88,estudiante88@example.com,123456,Contaduría Pública,8,activo,UG-20088
+Estudiante 89,estudiante89@example.com,123456,Trabajo social,9,activo,UG-20089
+Estudiante 90,estudiante90@example.com,123456,Licenciatura infantil,10,activo,UG-20090
+Estudiante 91,estudiante91@example.com,123456,Ingeniería en sistemas,1,activo,UG-20091
+Estudiante 92,estudiante92@example.com,123456,Administración de Empresas,2,activo,UG-20092
+Estudiante 93,estudiante93@example.com,123456,Contaduría Pública,3,activo,UG-20093
+Estudiante 94,estudiante94@example.com,123456,Trabajo social,4,activo,UG-20094
+Estudiante 95,estudiante95@example.com,123456,Licenciatura infantil,5,activo,UG-20095
+Estudiante 96,estudiante96@example.com,123456,Ingeniería en sistemas,6,activo,UG-20096
+Estudiante 97,estudiante97@example.com,123456,Administración de Empresas,7,activo,UG-20097
+Estudiante 98,estudiante98@example.com,123456,Contaduría Pública,8,activo,UG-20098
+Estudiante 99,estudiante99@example.com,123456,Trabajo social,9,activo,UG-20099
+Estudiante 100,estudiante100@example.com,123456,Licenciatura infantil,10,activo,UG-20100
+Estudiante 101,estudiante101@example.com,123456,Ingeniería en sistemas,1,activo,UG-20101
+Estudiante 102,estudiante102@example.com,123456,Administración de Empresas,2,activo,UG-20102
+Estudiante 103,estudiante103@example.com,123456,Contaduría Pública,3,activo,UG-20103
+Estudiante 104,estudiante104@example.com,123456,Trabajo social,4,activo,UG-20104
+Estudiante 105,estudiante105@example.com,123456,Licenciatura infantil,5,activo,UG-20105
+Estudiante 106,estudiante106@example.com,123456,Ingeniería en sistemas,6,activo,UG-20106
+Estudiante 107,estudiante107@example.com,123456,Administración de Empresas,7,activo,UG-20107
+Estudiante 108,estudiante108@example.com,123456,Contaduría Pública,8,activo,UG-20108
+Estudiante 109,estudiante109@example.com,123456,Trabajo social,9,activo,UG-20109
+Estudiante 110,estudiante110@example.com,123456,Licenciatura infantil,10,activo,UG-20110
+Estudiante 111,estudiante111@example.com,123456,Ingeniería en sistemas,1,activo,UG-20111
+Estudiante 112,estudiante112@example.com,123456,Administración de Empresas,2,activo,UG-20112
+Estudiante 113,estudiante113@example.com,123456,Contaduría Pública,3,activo,UG-20113
+Estudiante 114,estudiante114@example.com,123456,Trabajo social,4,activo,UG-20114
+Estudiante 115,estudiante115@example.com,123456,Licenciatura infantil,5,activo,UG-20115
+Estudiante 116,estudiante116@example.com,123456,Ingeniería en sistemas,6,activo,UG-20116
+Estudiante 117,estudiante117@example.com,123456,Administración de Empresas,7,activo,UG-20117
+Estudiante 118,estudiante118@example.com,123456,Contaduría Pública,8,activo,UG-20118
+Estudiante 119,estudiante119@example.com,123456,Trabajo social,9,activo,UG-20119
+Estudiante 120,estudiante120@example.com,123456,Licenciatura infantil,10,activo,UG-20120
+Estudiante 121,estudiante121@example.com,123456,Ingeniería en sistemas,1,activo,UG-20121
+Estudiante 122,estudiante122@example.com,123456,Administración de Empresas,2,activo,UG-20122
+Estudiante 123,estudiante123@example.com,123456,Contaduría Pública,3,activo,UG-20123
+Estudiante 124,estudiante124@example.com,123456,Trabajo social,4,activo,UG-20124
+Estudiante 125,estudiante125@example.com,123456,Licenciatura infantil,5,activo,UG-20125
+Estudiante 126,estudiante126@example.com,123456,Ingeniería en sistemas,6,activo,UG-20126
+Estudiante 127,estudiante127@example.com,123456,Administración de Empresas,7,activo,UG-20127
+Estudiante 128,estudiante128@example.com,123456,Contaduría Pública,8,activo,UG-20128
+Estudiante 129,estudiante129@example.com,123456,Trabajo social,9,activo,UG-20129
+Estudiante 130,estudiante130@example.com,123456,Licenciatura infantil,10,activo,UG-20130
+Estudiante 131,estudiante131@example.com,123456,Ingeniería en sistemas,1,activo,UG-20131
+Estudiante 132,estudiante132@example.com,123456,Administración de Empresas,2,activo,UG-20132
+Estudiante 133,estudiante133@example.com,123456,Contaduría Pública,3,activo,UG-20133
+Estudiante 134,estudiante134@example.com,123456,Trabajo social,4,activo,UG-20134
+Estudiante 135,estudiante135@example.com,123456,Licenciatura infantil,5,activo,UG-20135
+Estudiante 136,estudiante136@example.com,123456,Ingeniería en sistemas,6,activo,UG-20136
+Estudiante 137,estudiante137@example.com,123456,Administración de Empresas,7,activo,UG-20137
+Estudiante 138,estudiante138@example.com,123456,Contaduría Pública,8,activo,UG-20138
+Estudiante 139,estudiante139@example.com,123456,Trabajo social,9,activo,UG-20139
+Estudiante 140,estudiante140@example.com,123456,Licenciatura infantil,10,activo,UG-20140
+Estudiante 141,estudiante141@example.com,123456,Ingeniería en sistemas,1,activo,UG-20141
+Estudiante 142,estudiante142@example.com,123456,Administración de Empresas,2,activo,UG-20142
+Estudiante 143,estudiante143@example.com,123456,Contaduría Pública,3,activo,UG-20143
+Estudiante 144,estudiante144@example.com,123456,Trabajo social,4,activo,UG-20144
+Estudiante 145,estudiante145@example.com,123456,Licenciatura infantil,5,activo,UG-20145
+Estudiante 146,estudiante146@example.com,123456,Ingeniería en sistemas,6,activo,UG-20146
+Estudiante 147,estudiante147@example.com,123456,Administración de Empresas,7,activo,UG-20147
+Estudiante 148,estudiante148@example.com,123456,Contaduría Pública,8,activo,UG-20148
+Estudiante 149,estudiante149@example.com,123456,Trabajo social,9,activo,UG-20149
+Estudiante 150,estudiante150@example.com,123456,Licenciatura infantil,10,activo,UG-20150

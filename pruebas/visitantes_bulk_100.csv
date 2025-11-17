@@ -1,0 +1,101 @@
+name,email,password,visitReason,status,user_code
+Visitante 1,visitante1@example.com,123456,Visita académica,activo,UV-10001
+Visitante 2,visitante2@example.com,123456,Evento,activo,UV-10002
+Visitante 3,visitante3@example.com,123456,Reunión,activo,UV-10003
+Visitante 4,visitante4@example.com,123456,Trámite,activo,UV-10004
+Visitante 5,visitante5@example.com,123456,Biblioteca,activo,UV-10005
+Visitante 6,visitante6@example.com,123456,Visita académica,activo,UV-10006
+Visitante 7,visitante7@example.com,123456,Evento,activo,UV-10007
+Visitante 8,visitante8@example.com,123456,Reunión,activo,UV-10008
+Visitante 9,visitante9@example.com,123456,Trámite,activo,UV-10009
+Visitante 10,visitante10@example.com,123456,Biblioteca,activo,UV-10010
+Visitante 11,visitante11@example.com,123456,Visita académica,activo,UV-10011
+Visitante 12,visitante12@example.com,123456,Evento,activo,UV-10012
+Visitante 13,visitante13@example.com,123456,Reunión,activo,UV-10013
+Visitante 14,visitante14@example.com,123456,Trámite,activo,UV-10014
+Visitante 15,visitante15@example.com,123456,Biblioteca,activo,UV-10015
+Visitante 16,visitante16@example.com,123456,Visita académica,activo,UV-10016
+Visitante 17,visitante17@example.com,123456,Evento,activo,UV-10017
+Visitante 18,visitante18@example.com,123456,Reunión,activo,UV-10018
+Visitante 19,visitante19@example.com,123456,Trámite,activo,UV-10019
+Visitante 20,visitante20@example.com,123456,Biblioteca,activo,UV-10020
+Visitante 21,visitante21@example.com,123456,Visita académica,activo,UV-10021
+Visitante 22,visitante22@example.com,123456,Evento,activo,UV-10022
+Visitante 23,visitante23@example.com,123456,Reunión,activo,UV-10023
+Visitante 24,visitante24@example.com,123456,Trámite,activo,UV-10024
+Visitante 25,visitante25@example.com,123456,Biblioteca,activo,UV-10025
+Visitante 26,visitante26@example.com,123456,Visita académica,activo,UV-10026
+Visitante 27,visitante27@example.com,123456,Evento,activo,UV-10027
+Visitante 28,visitante28@example.com,123456,Reunión,activo,UV-10028
+Visitante 29,visitante29@example.com,123456,Trámite,activo,UV-10029
+Visitante 30,visitante30@example.com,123456,Biblioteca,activo,UV-10030
+Visitante 31,visitante31@example.com,123456,Visita académica,activo,UV-10031
+Visitante 32,visitante32@example.com,123456,Evento,activo,UV-10032
+Visitante 33,visitante33@example.com,123456,Reunión,activo,UV-10033
+Visitante 34,visitante34@example.com,123456,Trámite,activo,UV-10034
+Visitante 35,visitante35@example.com,123456,Biblioteca,activo,UV-10035
+Visitante 36,visitante36@example.com,123456,Visita académica,activo,UV-10036
+Visitante 37,visitante37@example.com,123456,Evento,activo,UV-10037
+Visitante 38,visitante38@example.com,123456,Reunión,activo,UV-10038
+Visitante 39,visitante39@example.com,123456,Trámite,activo,UV-10039
+Visitante 40,visitante40@example.com,123456,Biblioteca,activo,UV-10040
+Visitante 41,visitante41@example.com,123456,Visita académica,activo,UV-10041
+Visitante 42,visitante42@example.com,123456,Evento,activo,UV-10042
+Visitante 43,visitante43@example.com,123456,Reunión,activo,UV-10043
+Visitante 44,visitante44@example.com,123456,Trámite,activo,UV-10044
+Visitante 45,visitante45@example.com,123456,Biblioteca,activo,UV-10045
+Visitante 46,visitante46@example.com,123456,Visita académica,activo,UV-10046
+Visitante 47,visitante47@example.com,123456,Evento,activo,UV-10047
+Visitante 48,visitante48@example.com,123456,Reunión,activo,UV-10048
+Visitante 49,visitante49@example.com,123456,Trámite,activo,UV-10049
+Visitante 50,visitante50@example.com,123456,Biblioteca,activo,UV-10050
+Visitante 51,visitante51@example.com,123456,Visita académica,activo,UV-10051
+Visitante 52,visitante52@example.com,123456,Evento,activo,UV-10052
+Visitante 53,visitante53@example.com,123456,Reunión,activo,UV-10053
+Visitante 54,visitante54@example.com,123456,Trámite,activo,UV-10054
+Visitante 55,visitante55@example.com,123456,Biblioteca,activo,UV-10055
+Visitante 56,visitante56@example.com,123456,Visita académica,activo,UV-10056
+Visitante 57,visitante57@example.com,123456,Evento,activo,UV-10057
+Visitante 58,visitante58@example.com,123456,Reunión,activo,UV-10058
+Visitante 59,visitante59@example.com,123456,Trámite,activo,UV-10059
+Visitante 60,visitante60@example.com,123456,Biblioteca,activo,UV-10060
+Visitante 61,visitante61@example.com,123456,Visita académica,activo,UV-10061
+Visitante 62,visitante62@example.com,123456,Evento,activo,UV-10062
+Visitante 63,visitante63@example.com,123456,Reunión,activo,UV-10063
+Visitante 64,visitante64@example.com,123456,Trámite,activo,UV-10064
+Visitante 65,visitante65@example.com,123456,Biblioteca,activo,UV-10065
+Visitante 66,visitante66@example.com,123456,Visita académica,activo,UV-10066
+Visitante 67,visitante67@example.com,123456,Evento,activo,UV-10067
+Visitante 68,visitante68@example.com,123456,Reunión,activo,UV-10068
+Visitante 69,visitante69@example.com,123456,Trámite,activo,UV-10069
+Visitante 70,visitante70@example.com,123456,Biblioteca,activo,UV-10070
+Visitante 71,visitante71@example.com,123456,Visita académica,activo,UV-10071
+Visitante 72,visitante72@example.com,123456,Evento,activo,UV-10072
+Visitante 73,visitante73@example.com,123456,Reunión,activo,UV-10073
+Visitante 74,visitante74@example.com,123456,Trámite,activo,UV-10074
+Visitante 75,visitante75@example.com,123456,Biblioteca,activo,UV-10075
+Visitante 76,visitante76@example.com,123456,Visita académica,activo,UV-10076
+Visitante 77,visitante77@example.com,123456,Evento,activo,UV-10077
+Visitante 78,visitante78@example.com,123456,Reunión,activo,UV-10078
+Visitante 79,visitante79@example.com,123456,Trámite,activo,UV-10079
+Visitante 80,visitante80@example.com,123456,Biblioteca,activo,UV-10080
+Visitante 81,visitante81@example.com,123456,Visita académica,activo,UV-10081
+Visitante 82,visitante82@example.com,123456,Evento,activo,UV-10082
+Visitante 83,visitante83@example.com,123456,Reunión,activo,UV-10083
+Visitante 84,visitante84@example.com,123456,Trámite,activo,UV-10084
+Visitante 85,visitante85@example.com,123456,Biblioteca,activo,UV-10085
+Visitante 86,visitante86@example.com,123456,Visita académica,activo,UV-10086
+Visitante 87,visitante87@example.com,123456,Evento,activo,UV-10087
+Visitante 88,visitante88@example.com,123456,Reunión,activo,UV-10088
+Visitante 89,visitante89@example.com,123456,Trámite,activo,UV-10089
+Visitante 90,visitante90@example.com,123456,Biblioteca,activo,UV-10090
+Visitante 91,visitante91@example.com,123456,Visita académica,activo,UV-10091
+Visitante 92,visitante92@example.com,123456,Evento,activo,UV-10092
+Visitante 93,visitante93@example.com,123456,Reunión,activo,UV-10093
+Visitante 94,visitante94@example.com,123456,Trámite,activo,UV-10094
+Visitante 95,visitante95@example.com,123456,Biblioteca,activo,UV-10095
+Visitante 96,visitante96@example.com,123456,Visita académica,activo,UV-10096
+Visitante 97,visitante97@example.com,123456,Evento,activo,UV-10097
+Visitante 98,visitante98@example.com,123456,Reunión,activo,UV-10098
+Visitante 99,visitante99@example.com,123456,Trámite,activo,UV-10099
+Visitante 100,visitante100@example.com,123456,Biblioteca,activo,UV-10100
