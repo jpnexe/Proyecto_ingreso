@@ -329,13 +329,33 @@ export function mount({ currentUser, navigate, showToast } = {}) {
     mensajes: () => `
       <section class="messages-section chart-card">
         <div class="chart-header"><h3>Mensajes</h3></div>
-        <table>
-          <thead><tr><th>Remitente</th><th>Asunto</th><th>Estado</th></tr></thead>
-          <tbody>
-            <tr><td>Soporte</td><td>Bienvenido al sistema</td><td>Leído</td></tr>
-            <tr><td>Dirección</td><td>Actualización de política</td><td>No leído</td></tr>
-          </tbody>
-        </table>
+        <div class="messages-actions">
+          <input type="search" id="msg-search" placeholder="Buscar en mensajes" />
+          <div class="segmented" role="tablist">
+            <button class="seg-btn active" data-filter="all">Todos</button>
+            <button class="seg-btn" data-filter="unread">No leídos</button>
+            <button class="seg-btn" data-filter="read">Leídos</button>
+          </div>
+          <div class="messages-presets">
+            <button class="btn btn-sm preset" data-preset="important">Importantes</button>
+            <button class="btn btn-sm preset" data-preset="system">Sistema</button>
+            <button class="btn btn-sm preset" data-preset="updates">Actualizaciones</button>
+          </div>
+          <div class="messages-actions-right">
+            <button id="msg-mark-all-read" class="btn btn-sm">Marcar todos como leídos</button>
+            <button id="msg-new" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> Nuevo</button>
+          </div>
+        </div>
+        <div class="messages-split">
+          <div class="messages-pane">
+            <h4>Bandeja</h4>
+            <ul id="messages-list" class="messages-list" aria-live="polite"></ul>
+          </div>
+          <div class="messages-pane">
+            <h4>Detalle</h4>
+            <div id="message-detail" class="message-detail"></div>
+          </div>
+        </div>
       </section>
     `,
     calendario: () => `
@@ -625,8 +645,32 @@ export function mount({ currentUser, navigate, showToast } = {}) {
     buscar: () => `
       <section class="search-section chart-card">
         <div class="chart-header"><h3>Buscar</h3></div>
-        <input type="search" id="search-input" placeholder="Buscar en el panel" />
-        <p>Escribe para filtrar contenido (demo).</p>
+        <div class="search-actions" aria-label="Controles de búsqueda">
+          <input type="search" id="search-input" placeholder="Buscar en usuarios, tareas y novedades" />
+          <div class="search-filters">
+            <label><input type="checkbox" id="sf-users" /> Usuarios</label>
+            <label><input type="checkbox" id="sf-tasks" /> Tareas</label>
+            <label><input type="checkbox" id="sf-logs" /> Novedades</label>
+          </div>
+          <div class="search-presets">
+            <button class="btn btn-sm preset" data-preset="users_active">Usuarios activos</button>
+            <button class="btn btn-sm preset" data-preset="tasks_today">Tareas de hoy</button>
+            <button class="btn btn-sm preset" data-preset="tasks_done">Completadas</button>
+            <button class="btn btn-sm preset" data-preset="logs_error">Errores</button>
+            <button class="btn btn-sm preset" data-preset="logs_warn">Advertencias</button>
+          </div>
+        </div>
+        <div class="search-split">
+          <div class="search-pane">
+            <h4>Historial</h4>
+            <ul id="search-history" class="search-list" aria-live="polite"></ul>
+            <div class="history-actions"><button id="history-clear" class="btn btn-sm">Limpiar historial</button></div>
+          </div>
+          <div class="search-pane">
+            <h4>Resultados</h4>
+            <ul id="search-results" class="search-list" aria-live="polite"></ul>
+          </div>
+        </div>
       </section>
     `,
   };
@@ -1931,9 +1975,11 @@ export function mount({ currentUser, navigate, showToast } = {}) {
       if (key === 'inicio') { initInicioCharts(); initInicioData(); applyAdaptiveRatios(); initEntryRegister(); initExitRegister(); } else { salesChart = null; categoriesChart = null; dailyRegsChart = null; }
       if (key === 'estadisticas') initEstadisticasCharts();
       if (key === 'reportes') initSystemLogs();
+      if (key === 'mensajes') initMensajes();
       if (key === 'calendario') initCalendarTasks();
       if (key === 'usuarios') initUsuariosAdmin();
       if (key === 'ajustes') initAjustes();
+      if (key === 'buscar') initBuscar();
     };
     if (firstRender) {
       swap();
@@ -2142,6 +2188,229 @@ export function mount({ currentUser, navigate, showToast } = {}) {
     });
 
     render();
+  };
+
+  const initMensajes = () => {
+    const listEl = document.getElementById('messages-list');
+    const detailEl = document.getElementById('message-detail');
+    const searchEl = document.getElementById('msg-search');
+    const segBtns = Array.from(document.querySelectorAll('.messages-section .segmented .seg-btn'));
+    const markAllBtn = document.getElementById('msg-mark-all-read');
+    const newBtn = document.getElementById('msg-new');
+    const presetBtns = Array.from(document.querySelectorAll('.messages-presets .preset'));
+    if (!listEl || !detailEl || !searchEl || segBtns.length === 0) return;
+
+    const loadMsgs = () => {
+      try { return JSON.parse(localStorage.getItem('adminMessages')||'[]'); } catch { return []; }
+    };
+    const saveMsgs = (arr) => { try { localStorage.setItem('adminMessages', JSON.stringify(arr)); } catch {} };
+    let msgs = loadMsgs();
+    if (!Array.isArray(msgs) || msgs.length === 0) {
+      msgs = [
+        { id: 1, from: 'Soporte', subject: 'Bienvenido al sistema', status: 'read', category: 'system', important: true, ts: Date.now()-86400000 },
+        { id: 2, from: 'Dirección', subject: 'Actualización de política', status: 'unread', category: 'updates', important: false, ts: Date.now()-3600000 }
+      ];
+      saveMsgs(msgs);
+    }
+
+    let filter = 'all';
+    let query = '';
+    let selectedId = null;
+
+    const renderList = () => {
+      const t = query.toLowerCase();
+      const filtered = msgs.filter(m => {
+        const matchesFilter = filter === 'all' ? true : (filter === 'unread' ? m.status !== 'read' : m.status === 'read');
+        const matchesQuery = !t || (m.subject||'').toLowerCase().includes(t) || (m.from||'').toLowerCase().includes(t);
+        return matchesFilter && matchesQuery;
+      }).sort((a,b) => (b.ts||0) - (a.ts||0));
+      listEl.innerHTML = filtered.length ? filtered.map(m => {
+        const badge = m.status === 'read' ? 'Leído' : 'No leído';
+        const imp = m.important ? '★' : '';
+        return `<li class="message-item" data-id="${m.id}"><span class="message-badge">${badge}</span><span class="message-title">${imp} ${m.subject}</span><span class="message-meta">${m.from}</span></li>`;
+      }).join('') : '<li class="message-empty">Sin mensajes</li>';
+      listEl.querySelectorAll('.message-item').forEach(li => {
+        li.addEventListener('click', () => {
+          selectedId = Number(li.getAttribute('data-id'));
+          renderDetail();
+        });
+      });
+    };
+
+    const renderDetail = () => {
+      const m = msgs.find(x => x.id === selectedId) || msgs[0] || null;
+      if (!m) { detailEl.innerHTML = '<div class="message-empty">Selecciona un mensaje</div>'; return; }
+      selectedId = m.id;
+      detailEl.innerHTML = `
+        <div class="message-head">
+          <div class="message-from">${m.from}</div>
+          <div class="message-actions">
+            <button id="msg-toggle" class="btn btn-sm">${m.status === 'read' ? 'Marcar como no leído' : 'Marcar como leído'}</button>
+            <button id="msg-important" class="btn btn-sm">${m.important ? 'Quitar importante' : 'Marcar importante'}</button>
+            <button id="msg-delete" class="btn btn-danger btn-sm">Eliminar</button>
+          </div>
+        </div>
+        <div class="message-subject">${m.subject}</div>
+      `;
+      const toggleBtn = document.getElementById('msg-toggle');
+      const impBtn = document.getElementById('msg-important');
+      const delBtn = document.getElementById('msg-delete');
+      if (toggleBtn) toggleBtn.addEventListener('click', () => { const i = msgs.findIndex(x => x.id === selectedId); if (i>=0) { msgs[i].status = msgs[i].status === 'read' ? 'unread' : 'read'; saveMsgs(msgs); renderList(); renderDetail(); } });
+      if (impBtn) impBtn.addEventListener('click', () => { const i = msgs.findIndex(x => x.id === selectedId); if (i>=0) { msgs[i].important = !msgs[i].important; saveMsgs(msgs); renderList(); renderDetail(); } });
+      if (delBtn) delBtn.addEventListener('click', () => { msgs = msgs.filter(x => x.id !== selectedId); saveMsgs(msgs); selectedId = msgs[0]?.id || null; renderList(); renderDetail(); });
+    };
+
+    segBtns.forEach(b => b.addEventListener('click', () => { segBtns.forEach(x => x.classList.remove('active')); b.classList.add('active'); filter = b.getAttribute('data-filter'); renderList(); }));
+    if (markAllBtn) markAllBtn.addEventListener('click', () => { msgs = msgs.map(m => ({ ...m, status: 'read' })); saveMsgs(msgs); renderList(); renderDetail(); });
+    if (newBtn) newBtn.addEventListener('click', () => { const id = (msgs.reduce((mx, m) => Math.max(mx, m.id||0), 0) + 1); const item = { id, from: 'Sistema', subject: 'Nuevo mensaje', status: 'unread', category: 'system', important: false, ts: Date.now() }; msgs.unshift(item); saveMsgs(msgs); renderList(); selectedId = id; renderDetail(); });
+    presetBtns.forEach(p => p.addEventListener('click', () => {
+      const key = p.getAttribute('data-preset');
+      if (key === 'important') { filter = 'all'; segBtns.forEach(x => x.classList.remove('active')); segBtns[0].classList.add('active'); searchEl.value = ''; listEl.innerHTML = msgs.filter(m => m.important).length ? msgs.filter(m => m.important).map(m => `<li class="message-item" data-id="${m.id}"><span class="message-badge">${m.status==='read'?'Leído':'No leído'}</span><span class="message-title">★ ${m.subject}</span><span class="message-meta">${m.from}</span></li>`).join('') : '<li class="message-empty">Sin mensajes</li>'; listEl.querySelectorAll('.message-item').forEach(li => li.addEventListener('click', () => { selectedId = Number(li.getAttribute('data-id')); renderDetail(); })); return; }
+      if (key === 'system') { searchEl.value = 'Sistema'; renderList(); return; }
+      if (key === 'updates') { searchEl.value = 'Actualización'; renderList(); return; }
+    }));
+    searchEl.addEventListener('input', () => { query = searchEl.value; renderList(); });
+    renderList();
+    renderDetail();
+  };
+
+  const initBuscar = () => {
+    const input = document.getElementById('search-input');
+    const resEl = document.getElementById('search-results');
+    const histEl = document.getElementById('search-history');
+    const clearBtn = document.getElementById('history-clear');
+    const fUsers = document.getElementById('sf-users');
+    const fTasks = document.getElementById('sf-tasks');
+    const fLogs = document.getElementById('sf-logs');
+    const presetBtns = Array.from(document.querySelectorAll('.search-presets .preset'));
+    if (!input || !resEl || !histEl) return;
+
+    const loadHist = () => {
+      try { return JSON.parse(localStorage.getItem('adminSearchHistory')||'[]'); } catch { return []; }
+    };
+    const saveHist = (arr) => { try { localStorage.setItem('adminSearchHistory', JSON.stringify(arr.slice(0,30))); } catch {} };
+
+    let debounceId = null;
+    let filters = { users: false, tasks: false, logs: false };
+    const nowIso = () => new Date().toISOString();
+
+    const renderHistory = () => {
+      const h = loadHist();
+      histEl.innerHTML = h.length ? h.map((e, idx) => {
+        const tags = [e.filters?.users?'usuarios':null, e.filters?.tasks?'tareas':null, e.filters?.logs?'novedades':null].filter(Boolean).join(', ');
+        const when = new Date(e.ts||nowIso()).toLocaleString();
+        return `<li class="search-item" data-idx="${idx}"><span class="search-title">${e.q||'—'}</span><span class="search-meta">${tags} · ${when}</span></li>`;
+      }).join('') : '<li class="search-empty">Sin historial</li>';
+      histEl.querySelectorAll('.search-item').forEach(li => {
+        li.addEventListener('click', () => {
+          const idx = Number(li.getAttribute('data-idx'));
+          const h = loadHist();
+          const it = h[idx];
+          if (!it) return;
+          input.value = it.q || '';
+          filters = { users: !!(it.filters?.users), tasks: !!(it.filters?.tasks), logs: !!(it.filters?.logs) };
+          if (fUsers) fUsers.checked = filters.users; if (fTasks) fTasks.checked = filters.tasks; if (fLogs) fLogs.checked = filters.logs;
+          runSearch();
+        });
+      });
+    };
+
+    const addToHistory = (q) => {
+      const h = loadHist();
+      const item = { q, filters, ts: nowIso() };
+      // Evitar duplicados consecutivos
+      if (h[0] && h[0].q === q && JSON.stringify(h[0].filters) === JSON.stringify(filters)) return;
+      h.unshift(item);
+      saveHist(h);
+      renderHistory();
+    };
+
+    const runSearch = async () => {
+      const q = (input.value||'').trim().toLowerCase();
+      if (!filters.users && !filters.tasks && !filters.logs) {
+        resEl.innerHTML = '<li class="search-empty">Selecciona al menos una fuente</li>';
+        return;
+      }
+      const results = [];
+      try {
+        if (filters.users) {
+          const users = await listUsers();
+          users.filter(u => {
+            if (!q) return true;
+            return (u.name||'').toLowerCase().includes(q) || (u.email||'').toLowerCase().includes(q) || (u.userCode||'').toLowerCase().includes(q);
+          }).slice(0, 20).forEach(u => results.push({ kind: 'usuario', title: u.name||u.email||'Usuario', meta: `${u.email||''} · ${u.role||''} · ${u.status||''}` }));
+        }
+        if (filters.tasks) {
+          let tasks = await listTasks();
+          tasks.filter(t => {
+            if (!q) return true;
+            return (t.title||'').toLowerCase().includes(q) || (t.comments||'').toLowerCase().includes(q) || (t.assignee||'').toLowerCase().includes(q);
+          }).slice(0, 20).forEach(t => results.push({ kind: 'tarea', title: t.title||'Tarea', meta: `${t.status||'todo'} · ${t.priority||'main'} · ${t.assignee||''}` }));
+        }
+        if (filters.logs) {
+          const logs = await getLogs();
+          logs.filter(l => {
+            if (!q) return true;
+            return (l.action||'').toLowerCase().includes(q) || (l.message||'').toLowerCase().includes(q) || (l.meta||'').toLowerCase().includes(q);
+          }).slice(0, 20).forEach(l => results.push({ kind: 'log', title: l.message||l.action||'Evento', meta: `${(l.severity||'info')} · ${new Date(l.createdAt).toLocaleString()}` }));
+        }
+      } catch (_) {}
+
+      resEl.innerHTML = results.length ? results.map(r => {
+        const badge = r.kind === 'usuario' ? 'Usuarios' : r.kind === 'tarea' ? 'Tareas' : 'Novedades';
+        return `<li class="search-item"><span class="search-badge">${badge}</span><span class="search-title">${r.title}</span><span class="search-meta">${r.meta}</span></li>`;
+      }).join('') : '<li class="search-empty">Sin resultados</li>';
+
+      if ((filters.users || filters.tasks || filters.logs) && (q.length > 0 || results.length > 0)) addToHistory(q);
+    };
+
+    const bindFilters = () => {
+      if (fUsers) fUsers.addEventListener('change', () => { filters.users = !!fUsers.checked; runSearch(); });
+      if (fTasks) fTasks.addEventListener('change', () => { filters.tasks = !!fTasks.checked; runSearch(); });
+      if (fLogs) fLogs.addEventListener('change', () => { filters.logs = !!fLogs.checked; runSearch(); });
+    };
+
+    const todayKey = () => new Date().toISOString().slice(0,10);
+    const applyPreset = async (key) => {
+      if (key === 'users_active') {
+        filters = { users: true, tasks: false, logs: false };
+        if (fUsers) fUsers.checked = true; if (fTasks) fTasks.checked = false; if (fLogs) fLogs.checked = false;
+        const users = await listUsers();
+        const activeNames = users.filter(u => (u.status||'activo')==='activo').map(u => u.name||u.email).slice(0,3);
+        input.value = activeNames[0] || '';
+        runSearch();
+      } else if (key === 'tasks_today') {
+        filters = { users: false, tasks: true, logs: false };
+        if (fUsers) fUsers.checked = false; if (fTasks) fTasks.checked = true; if (fLogs) fLogs.checked = false;
+        input.value = todayKey();
+        runSearch();
+      } else if (key === 'tasks_done') {
+        filters = { users: false, tasks: true, logs: false };
+        if (fUsers) fUsers.checked = false; if (fTasks) fTasks.checked = true; if (fLogs) fLogs.checked = false;
+        input.value = 'done';
+        runSearch();
+      } else if (key === 'logs_error') {
+        filters = { users: false, tasks: false, logs: true };
+        if (fUsers) fUsers.checked = false; if (fTasks) fTasks.checked = false; if (fLogs) fLogs.checked = true;
+        input.value = 'error';
+        runSearch();
+      } else if (key === 'logs_warn') {
+        filters = { users: false, tasks: false, logs: true };
+        if (fUsers) fUsers.checked = false; if (fTasks) fTasks.checked = false; if (fLogs) fLogs.checked = true;
+        input.value = 'warn';
+        runSearch();
+      }
+    };
+
+    presetBtns.forEach(b => b.addEventListener('click', () => applyPreset(b.getAttribute('data-preset'))));
+    if (clearBtn) clearBtn.addEventListener('click', () => { saveHist([]); renderHistory(); });
+    input.addEventListener('input', () => { if (debounceId) clearTimeout(debounceId); debounceId = setTimeout(runSearch, 180); });
+    bindFilters();
+    if (fUsers) fUsers.checked = filters.users;
+    if (fTasks) fTasks.checked = filters.tasks;
+    if (fLogs) fLogs.checked = filters.logs;
+    renderHistory();
+    runSearch();
   };
 
   // --- Ajustes: exportar/importar BD y migrar tareas ---
