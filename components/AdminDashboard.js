@@ -234,11 +234,12 @@ export function mount({ currentUser, navigate, showToast } = {}) {
     markReadBtn.addEventListener('click', async (e) => {
       e.preventDefault();
       const set = getReadIds();
-      lastPreviewIds.forEach(id => set.add(id));
+      const logs = await getLogs();
+      (logs||[]).forEach(l => set.add(l.id));
       setReadIds(set);
-      const logs = await updateNotifCount();
-      renderNotifPreview(logs);
-      if (typeof showToast === 'function') showToast('Novedades marcadas como leídas', 'success');
+      const updated = await updateNotifCount();
+      renderNotifPreview(updated);
+      if (typeof showToast === 'function') showToast('Todas las novedades marcadas como leídas', 'success');
     });
   }
 
@@ -256,6 +257,7 @@ export function mount({ currentUser, navigate, showToast } = {}) {
         <div class="kpi-card"><div class="kpi-header"><span>Estudiantes</span><i class="fas fa-user-graduate"></i></div><div id="kpi-estudiantes" class="kpi-value">-</div><div class="kpi-change positive">Actualizado</div></div>
         <div class="kpi-card"><div class="kpi-header"><span>Visitantes</span><i class="fas fa-user"></i></div><div id="kpi-visitantes" class="kpi-value">-</div><div class="kpi-change positive">Actualizado</div></div>
         <div class="kpi-card clickable" id="kpi-register-entry"><div class="kpi-header"><span>Registrar ingreso</span><i class="fas fa-qrcode"></i></div><div class="kpi-value">QR / Código</div><div class="kpi-change positive">Nuevo</div></div>
+        <div class="kpi-card clickable" id="kpi-register-exit"><div class="kpi-header"><span>Registrar salida</span><i class="fas fa-sign-out-alt"></i></div><div class="kpi-value">QR / Código</div><div class="kpi-change positive">Nuevo</div></div>
       </section>
       <section class="charts-grid">
         <div class="chart-card"><div class="chart-header"><h3>Registros diarios por rol</h3><button class="chart-settings"><i class="fas fa-cog"></i></button></div><canvas id="daily-role-registrations-chart"></canvas></div>
@@ -1233,7 +1235,8 @@ export function mount({ currentUser, navigate, showToast } = {}) {
       `).join('');
       // After render, bind selection
       listEl.querySelectorAll('.task-item').forEach(el => {
-        el.addEventListener('click', () => {
+        el.addEventListener('click', (e) => {
+          if (e.target && (e.target.closest('input[type="checkbox"]'))) return;
           selectedId = Number(el.getAttribute('data-id'));
           renderList();
           renderDetail();
@@ -1326,7 +1329,7 @@ export function mount({ currentUser, navigate, showToast } = {}) {
       const created = await createTask(payload);
       tasks = await listTasks();
       try { if (isDualWrite()) await altReplaceAllTasks(tasks); } catch {}
-      selectedId = created?.id || tasks[0]?.id || null;
+      selectedId = created || tasks[0]?.id || null;
       renderList();
       renderDetail();
       if (typeof showToast === 'function') showToast('Tarea creada', 'success');
@@ -1351,6 +1354,7 @@ export function mount({ currentUser, navigate, showToast } = {}) {
       tasks = await listTasks();
       try { if (isDualWrite()) await altReplaceAllTasks(tasks); } catch {}
       renderList();
+      renderDetail();
       if (typeof showToast === 'function') showToast('Tarea guardada', 'success');
       if (currentUser && currentUser.id) await logAction(currentUser.id, 'task_saved', `Calendario: ${payload.title}`);
     });
@@ -1364,7 +1368,8 @@ export function mount({ currentUser, navigate, showToast } = {}) {
       renderList();
       renderDetail();
       if (typeof showToast === 'function') showToast('Tarea marcada como completada', 'success');
-      if (currentUser && currentUser.id) await logAction(currentUser.id, 'task_completed', `Calendario: ${tasks[idx].title}`);
+      const tComp = tasks.find(x => x.id === selectedId);
+      if (currentUser && currentUser.id) await logAction(currentUser.id, 'task_completed', `Calendario: ${tComp?.title||''}`);
     });
 
     detail.del.addEventListener('click', async () => {
