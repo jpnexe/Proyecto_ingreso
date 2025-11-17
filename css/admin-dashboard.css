@@ -411,6 +411,7 @@ body {
 
 .user-name {
   font-weight: 600;
+  color: var(--identity-text, var(--text-color));
 }
 
 .user-role {
@@ -418,6 +419,7 @@ body {
   color: var(--role-color, #6b7280);
 }
 [data-theme="dark"] .user-role { --role-color: #e5e7eb; }
+[data-theme="dark"] .user-name { color: #ffffff; }
 
 .kpi-grid {
   display: grid;

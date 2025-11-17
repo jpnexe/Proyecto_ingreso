@@ -2212,11 +2212,16 @@ export function mount({ currentUser, navigate, showToast } = {}) {
     if (!listEl || !detailEl || !searchEl || segBtns.length === 0) return;
 
     const loadMsgs = () => {
-      try { return JSON.parse(localStorage.getItem('adminMessages')||'[]'); } catch { return []; }
+      try {
+        const raw = localStorage.getItem('adminMessages');
+        return raw ? JSON.parse(raw) : null;
+      } catch {
+        return null;
+      }
     };
     const saveMsgs = (arr) => { try { localStorage.setItem('adminMessages', JSON.stringify(arr)); } catch {} };
     let msgs = loadMsgs();
-    if (!Array.isArray(msgs) || msgs.length === 0) {
+    if (msgs === null) {
       msgs = [
         { id: 1, from: 'Soporte', subject: 'Bienvenido al sistema', status: 'read', category: 'system', important: true, ts: Date.now()-86400000 },
         { id: 2, from: 'Dirección', subject: 'Actualización de política', status: 'unread', category: 'updates', important: false, ts: Date.now()-3600000 }
