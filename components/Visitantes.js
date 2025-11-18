@@ -99,28 +99,28 @@ export function render({ currentUser }) {
             <div class="section-title">📍 Lugares</div>
             <div class="lugares-grid">
               <div class="lugar-item">
-                <img src="https://images.unsplash.com/photo-1562774053-701939374585?w=300&h=200&fit=crop" alt="Biblioteca" class="lugar-img">
+                <img src="/img/Imagen%20de%20WhatsApp%202025-11-17%20a%20las%2022.09.10_4ac09c48.jpg" alt="Biblioteca" class="lugar-img" loading="lazy" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1562774053-701939374585?w=300&h=200&fit=crop'">
                 <div class="lugar-info">
                   <h3>Biblioteca Central</h3>
                   <p>Espacio de estudio y consulta</p>
                 </div>
               </div>
               <div class="lugar-item">
-                <img src="https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=300&h=200&fit=crop" alt="Laboratorio" class="lugar-img">
+                <img src="/img/FOTO-FACULTAD-DE-INGENIERIA-1.jpg" alt="Laboratorio" class="lugar-img" loading="lazy" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=300&h=200&fit=crop'">
                 <div class="lugar-info">
                   <h3>Laboratorios</h3>
                   <p>Equipos especializados</p>
                 </div>
               </div>
               <div class="lugar-item">
-                <img src="https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=300&h=200&fit=crop" alt="Auditorio" class="lugar-img">
+                <img src="/img/Imagen%20de%20WhatsApp%202025-11-17%20a%20las%2022.09.09_2f24313f.jpg" alt="Auditorio" class="lugar-img" loading="lazy" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=300&h=200&fit=crop'">
                 <div class="lugar-info">
                   <h3>Auditorio</h3>
                   <p>Para eventos y conferencias</p>
                 </div>
               </div>
               <div class="lugar-item">
-                <img src="https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=300&h=200&fit=crop" alt="Cafetería" class="lugar-img">
+                <img src="/img/Imagen%20de%20WhatsApp%202025-11-17%20a%20las%2022.09.09_bf0c6376.jpg" alt="Cafetería" class="lugar-img" loading="lazy" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=300&h=200&fit=crop'">
                 <div class="lugar-info">
                   <h3>Cafetería</h3>
                   <p>Zona de descanso y alimentación</p>
