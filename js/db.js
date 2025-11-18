@@ -692,6 +692,30 @@ export async function cancelReserva(reservaId, userId = null) {
   window.dispatchEvent(new CustomEvent('dbchange', { detail: { type: 'reservas', id: reservaId, status: 'cancelada' } }));
 }
 
+export async function updateReserva(reservaId, { dateISO, motivo, status }, userId = null) {
+  await ensureSQLite();
+  if (!reservaId) throw new Error('ID de reserva requerido');
+  const r = all('SELECT id, user_id FROM reservas WHERE id=? LIMIT 1', [reservaId])[0];
+  if (!r) throw new Error('Reserva no encontrada');
+  if (userId && Number(r.user_id) !== Number(userId)) throw new Error('No autorizado para editar esta reserva');
+  if (dateISO) {
+    const exists = all('SELECT id FROM reservas WHERE date=? AND id<>? LIMIT 1', [dateISO, reservaId])[0];
+    if (exists) throw new Error('Horario no disponible, elige otro.');
+  }
+  const sets = [];
+  const vals = [];
+  if (dateISO) { sets.push('date=?'); vals.push(dateISO); }
+  if (dateISO) { sets.push('day=?'); vals.push(dayNameFromISO(dateISO)); }
+  if (typeof motivo === 'string') { sets.push('motivo=?'); vals.push(motivo); }
+  if (typeof status === 'string' && status) { sets.push('status=?'); vals.push(status); }
+  if (!sets.length) return r.id;
+  vals.push(reservaId);
+  run(`UPDATE reservas SET ${sets.join(', ')} WHERE id=?`, vals);
+  await saveSQLite();
+  window.dispatchEvent(new CustomEvent('dbchange', { detail: { type: 'reservas', id: reservaId } }));
+  return reservaId;
+}
+
 export async function listAnnouncements() {
   await ensureSQLite();
   const rows = all('SELECT id, title, body, created_at, author_id FROM announcements ORDER BY created_at DESC');

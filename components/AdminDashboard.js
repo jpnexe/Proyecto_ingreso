@@ -1,4 +1,4 @@
-import { logAction, getUserStats, listUsers, updateUser, deleteUser, listReservas, getUserById, getUserByEmail, getUserByCode, registerEntry, registerExit, registerUser, getLogs, listTasks, createTask, updateTask, deleteTask, migrateLocalTasksToSQLite, exportSQLite, importSQLite, getDailyEntryStats, getEntryExitStats, getHourlyEntryStats, listEntriesByUser, getLastEntryForUser, listSchedules, ensureSchedulesForCareerSemester, assignScheduleToUser, massDeleteUsersByFilter, deleteUserCascade } from '../js/db.js';
+import { logAction, getUserStats, listUsers, updateUser, deleteUser, listReservas, updateReserva, deleteReserva, cancelReserva, getUserById, getUserByEmail, getUserByCode, registerEntry, registerExit, registerUser, getLogs, listTasks, createTask, updateTask, deleteTask, migrateLocalTasksToSQLite, exportSQLite, importSQLite, getDailyEntryStats, getEntryExitStats, getHourlyEntryStats, listEntriesByUser, getLastEntryForUser, listSchedules, ensureSchedulesForCareerSemester, assignScheduleToUser, massDeleteUsersByFilter, deleteUserCascade } from '../js/db.js';
 import { altListTasks, altCreateTask, altUpdateTask, altDeleteTask, altReplaceAllTasks, altExportSQLite, altImportSQLite } from '../js/alt_db.js';
 
 export function render() {
@@ -481,11 +481,11 @@ export function mount({ currentUser, navigate, showToast } = {}) {
             </thead>
             <tbody id="users-table-body"></tbody>
           </table>
-        </div>
+    </div>
 
-        <!-- Modal de edición de usuario -->
-        <div id="user-edit-modal" class="modal hidden">
-          <div class="modal-content">
+    <!-- Modal de edición de usuario -->
+    <div id="user-edit-modal" class="modal hidden">
+      <div class="modal-content">
             <div class="modal-header">
               <h3 id="user-edit-title">Editar usuario</h3>
               <button class="modal-close" id="user-edit-close">&times;</button>
@@ -548,8 +548,20 @@ export function mount({ currentUser, navigate, showToast } = {}) {
                   <div style="grid-column: 1 / -1; display:flex; gap:8px; align-items:center;">
                     <button id="generate-schedules-btn" class="btn btn-sm">Generar horarios para carrera/semestre</button>
                     <span class="small muted">Se crean al menos 2 planes.</span>
-                  </div>
-                </div>
+      </div>
+    </div>
+
+    <div id="visitor-reservas-modal" class="modal hidden">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 id="vrm-title">Reservas del visitante</h3>
+          <button class="modal-close" id="vrm-close">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div id="vrm-list"></div>
+        </div>
+      </div>
+    </div>
                 <div id="visitor-fields" class="visitor-only">
                   <label>Motivo de la visita</label>
                   <input type="text" id="edit-user-visit-reason" placeholder="Motivo..." />
@@ -1584,6 +1596,9 @@ export function mount({ currentUser, navigate, showToast } = {}) {
     const adminFieldsEl = document.getElementById('admin-fields');
     const studentDetailModal = document.getElementById('student-detail-modal');
     const studentDetailClose = document.getElementById('student-detail-close');
+    const reservasModal = document.getElementById('visitor-reservas-modal');
+    const reservasClose = document.getElementById('vrm-close');
+    const reservasList = document.getElementById('vrm-list');
 
     let isCreating = false;
 
@@ -1685,9 +1700,100 @@ export function mount({ currentUser, navigate, showToast } = {}) {
       modal.classList.remove('hidden'); document.body.classList.add('modal-open');
     };
 
-    const closeModal = () => {
-      modal.classList.add('hidden'); document.body.classList.remove('modal-open');
-    };
+  const closeModal = () => {
+    modal.classList.add('hidden'); document.body.classList.remove('modal-open');
+  };
+
+  const openReservasModal = async (u) => {
+    if (!reservasModal || !reservasList) return;
+    reservasList.innerHTML = '';
+    const title = document.getElementById('vrm-title');
+    if (title) title.textContent = `Reservas de ${u.name||'visitante'}`;
+    let list = [];
+    try { list = await listReservas(u.id); } catch {}
+    if (!list.length) {
+      reservasList.innerHTML = '<div class="small">Sin reservas</div>';
+    } else {
+      reservasList.innerHTML = list.map(r => {
+        const d = new Date(r.date);
+        const ds = d.toISOString().slice(0,10);
+        const ts = d.toISOString().slice(11,16);
+        const st = r.status || 'pendiente';
+        return `
+          <div class="glass card" data-reserva-id="${r.id}" style="margin-bottom:12px;">
+            <div class="form-grid">
+              <label>Fecha</label>
+              <input type="date" value="${ds}" class="vrm-date" />
+              <label>Hora</label>
+              <input type="time" value="${ts}" class="vrm-time" />
+              <label>Motivo</label>
+              <input type="text" value="${r.motivo||''}" class="vrm-motivo" />
+              <label>Estado</label>
+              <select class="vrm-status">
+                <option value="pendiente" ${st==='pendiente'?'selected':''}>pendiente</option>
+                <option value="confirmada" ${st==='confirmada'?'selected':''}>confirmada</option>
+                <option value="cancelada" ${st==='cancelada'?'selected':''}>cancelada</option>
+              </select>
+            </div>
+            <div class="modal-footer">
+              <button class="btn btn-sm vrm-save">Guardar</button>
+              <button class="btn btn-sm vrm-cancel">Cancelar</button>
+              <button class="btn btn-danger btn-sm vrm-delete">Eliminar</button>
+            </div>
+          </div>`;
+      }).join('');
+    }
+    reservasModal.classList.remove('hidden');
+    document.body.classList.add('modal-open');
+    Array.from(reservasList.querySelectorAll('.vrm-save')).forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const card = e.target.closest('[data-reserva-id]');
+        const id = Number(card.getAttribute('data-reserva-id'));
+        const date = card.querySelector('.vrm-date').value;
+        const time = card.querySelector('.vrm-time').value;
+        const motivo = card.querySelector('.vrm-motivo').value;
+        const status = card.querySelector('.vrm-status').value;
+        try {
+          const iso = new Date(`${date}T${time}:00`).toISOString();
+          await updateReserva(id, { dateISO: iso, motivo, status });
+          if (typeof showToast === 'function') showToast('Reserva actualizada', 'success');
+        } catch (err) {
+          if (typeof showToast === 'function') showToast(err.message || 'Error al actualizar', 'error');
+        }
+      });
+    });
+    Array.from(reservasList.querySelectorAll('.vrm-delete')).forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const card = e.target.closest('[data-reserva-id]');
+        const id = Number(card.getAttribute('data-reserva-id'));
+        try {
+          if (!confirm('¿Eliminar esta reserva?')) return;
+          await deleteReserva(id);
+          card.remove();
+          if (typeof showToast === 'function') showToast('Reserva eliminada', 'warning');
+        } catch (err) {
+          if (typeof showToast === 'function') showToast(err.message || 'Error al eliminar', 'error');
+        }
+      });
+    });
+    Array.from(reservasList.querySelectorAll('.vrm-cancel')).forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const card = e.target.closest('[data-reserva-id]');
+        const id = Number(card.getAttribute('data-reserva-id'));
+        try {
+          await cancelReserva(id);
+          const sel = card.querySelector('.vrm-status');
+          if (sel) sel.value = 'cancelada';
+          if (typeof showToast === 'function') showToast('Reserva cancelada', 'success');
+        } catch (err) {
+          if (typeof showToast === 'function') showToast(err.message || 'Error al cancelar', 'error');
+        }
+      });
+    });
+  };
+  const closeReservasModal = () => { if (reservasModal) reservasModal.classList.add('hidden'); document.body.classList.remove('modal-open'); };
+  if (reservasClose) reservasClose.addEventListener('click', closeReservasModal);
+  if (reservasModal) reservasModal.addEventListener('click', (e) => { if (e.target === reservasModal) closeReservasModal(); });
 
     const openStudentDetail = async (u) => {
       if (!studentDetailModal) return;
@@ -1943,6 +2049,7 @@ export function mount({ currentUser, navigate, showToast } = {}) {
               <td>
                 <div class="row-actions">
                   <button class="btn btn-sm user-edit">Editar</button>
+                  <button class="btn btn-sm user-reservas">Reservas</button>
                   <button class="btn btn-danger btn-sm user-delete">Eliminar</button>
                 </div>
               </td>
@@ -1974,6 +2081,19 @@ export function mount({ currentUser, navigate, showToast } = {}) {
           const user = usersCache.find(x => x.id === id) || await getUserById(id);
           if (user) openModal(user);
         });
+      });
+
+      tbody.addEventListener('click', async (e) => {
+        const rb = e.target.closest('.user-reservas');
+        if (rb) {
+          e.preventDefault();
+          e.stopPropagation();
+          const tr = rb.closest('tr');
+          const id = Number(tr.getAttribute('data-id'));
+          const user = usersCache.find(x => x.id === id) || await getUserById(id);
+          if (user) openReservasModal(user);
+          return;
+        }
       });
 
       tbody.querySelectorAll('.user-delete').forEach(btn => {
