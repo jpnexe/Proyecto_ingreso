@@ -206,6 +206,26 @@ async function openSQLite() {
       slots TEXT NOT NULL,
       created_at INTEGER NOT NULL
     );
+
+    /* Historial de cargues masivos */
+    CREATE TABLE IF NOT EXISTS bulk_ops (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      op_type TEXT NOT NULL,
+      source TEXT,
+      created_count INTEGER NOT NULL,
+      updated_count INTEGER NOT NULL,
+      failed_count INTEGER NOT NULL,
+      created_at INTEGER NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS bulk_ops_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      bulk_id INTEGER NOT NULL,
+      user_id INTEGER NOT NULL,
+      action TEXT NOT NULL,
+      before_json TEXT,
+      after_json TEXT,
+      FOREIGN KEY(bulk_id) REFERENCES bulk_ops(id)
+    );
   `);
   sqliteReady = true;
 }
@@ -360,12 +380,67 @@ async function seedIfEmpty() {
   await saveSQLite();
 }
 
+export async function seedDemoData(estCount = 36, visCount = 24) {
+  await ensureSQLite();
+  const totalDemo = scalar("SELECT COUNT(*) as c FROM users WHERE email LIKE 'est.demo%@uni.com' OR email LIKE 'vis.demo%@uni.com'");
+  if (totalDemo >= (estCount + visCount)) return;
+  const first = ['María','Carlos','Luisa','Juan','Ana','José','Laura','Miguel','Paula','Andrés','Valeria','Daniel','Sofía','David','Camila','Jorge','Natalia','Diego','Fernanda','Santiago','Diana','Felipe','Mónica','Sebastián','Alejandra','Ricardo','Verónica','Óscar','Lina','Manuel'];
+  const last = ['García','López','Martínez','Rodríguez','Hernández','González','Pérez','Sánchez','Ramírez','Torres','Flores','Rivera','Reyes','Morales','Ortiz','Guerrero','Castillo','Vargas','Jiménez','Navarro','Rojas','Romero','Cruz','Mendoza','Aguilar','Vega','Silva','Valencia','Salazar','Camacho'];
+  const careers = ['Ingeniería en sistemas','Administración de Empresas','Contaduría Pública','Trabajo social','Licenciatura infantil'];
+  const visitReasons = ['Visita académica','Evento','Biblioteca','Trámite','Invitado especial','Capacitación'];
+  const pick = (arr) => arr[Math.floor(Math.random()*arr.length)];
+  const makeName = () => `${pick(first)} ${pick(last)} ${pick(last)}`;
+  const addEntriesFor = (userId) => {
+    const days = 14;
+    const now = new Date();
+    const startMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    for (let d = 0; d < days; d++) {
+      if (Math.random() < 0.6) {
+        const base = startMidnight - d * 86400000;
+        const entryTs = base + (7 + Math.floor(Math.random()*5)) * 3600000 + Math.floor(Math.random()*3600000);
+        run('INSERT INTO entries (user_id, method, created_at) VALUES (?,?,?)', [userId, 'manual', entryTs]);
+        if (Math.random() < 0.9) {
+          const exitTs = entryTs + (3 + Math.floor(Math.random()*6)) * 3600000;
+          run('INSERT INTO entries (user_id, method, created_at) VALUES (?,?,?)', [userId, 'salida', exitTs]);
+        }
+      }
+    }
+  };
+  for (let i = 1; i <= estCount; i++) {
+    const email = `est.demo${i}@uni.com`;
+    const exists = all('SELECT id FROM users WHERE LOWER(email)=LOWER(?) LIMIT 1', [email])[0];
+    if (exists) continue;
+    const name = makeName();
+    const pass = await hashPassword('123456');
+    const career = pick(careers);
+    const semester = String(1 + Math.floor(Math.random()*10));
+    run('INSERT INTO users (name, email, role, password, created_at, status, career, semester, visit_reason) VALUES (?,?,?,?,?,?,?,?,?)', [name, email, 'estudiante', pass, Date.now(), 'activo', career, semester, '']);
+    const id = scalar('SELECT last_insert_rowid() as id');
+    run('UPDATE users SET user_code=? WHERE id=?', [`UG-${id}`, id]);
+    addEntriesFor(id);
+  }
+  for (let i = 1; i <= visCount; i++) {
+    const email = `vis.demo${i}@uni.com`;
+    const exists = all('SELECT id FROM users WHERE LOWER(email)=LOWER(?) LIMIT 1', [email])[0];
+    if (exists) continue;
+    const name = makeName();
+    const pass = await hashPassword('123456');
+    const reason = pick(visitReasons);
+    run('INSERT INTO users (name, email, role, password, created_at, status, career, semester, visit_reason) VALUES (?,?,?,?,?,?,?,?,?)', [name, email, 'visitante', pass, Date.now(), 'activo', '', '', reason]);
+    const id = scalar('SELECT last_insert_rowid() as id');
+    run('UPDATE users SET user_code=? WHERE id=?', [`UV-${id}`, id]);
+    addEntriesFor(id);
+  }
+  await saveSQLite();
+  window.dispatchEvent(new CustomEvent('dbchange', { detail: { type: 'users' } }));
+}
+
 // --- Adaptación de initDB para usar SQLite ---
 export async function initDB() {
   try {
     await ensureSQLite();
     await seedIfEmpty();
-    // Asegurar que exista copia remota compartida incluso si la BD ya tenía datos
+    try { await seedDemoData(36, 24); } catch {}
     await saveSQLite();
   } catch (e) {
     console.error('Fallo al inicializar SQLite. La app continuará (Dexie aún está disponible vía db).', e);
@@ -846,6 +921,8 @@ export async function resetDatabase() {
     DELETE FROM tasks;
     DELETE FROM entries;
     DELETE FROM schedules;
+    DELETE FROM bulk_ops_items;
+    DELETE FROM bulk_ops;
   `);
   await saveSQLite();
   await seedIfEmpty();
@@ -1093,4 +1170,108 @@ export async function generateSchedulesForExistingCombos(min = 2) {
   for (const c of combos) {
     await ensureSchedulesForCareerSemester(c.career, c.semester, min);
   }
+}
+
+// --- Utilidades para eliminación en cascada ---
+export async function deleteUserCascade(id) {
+  await ensureSQLite();
+  const user = all('SELECT id, name, role FROM users WHERE id=?', [id])[0];
+  if (!user) return 0;
+  run('DELETE FROM reservas WHERE user_id=?', [id]);
+  run('DELETE FROM entries WHERE user_id=?', [id]);
+  run('DELETE FROM sessions WHERE user_id=?', [id]);
+  run('DELETE FROM logs WHERE user_id=?', [id]);
+  run('DELETE FROM users WHERE id=?', [id]);
+  await saveSQLite();
+  window.dispatchEvent(new CustomEvent('dbchange', { detail: { type: 'users', id } }));
+  return 1;
+}
+
+export async function massDeleteUsersByFilter(type, filters = {}) {
+  await ensureSQLite();
+  const role = type === 'visitante' ? 'visitante' : 'estudiante';
+  const users = await getUsersByRole(role, filters);
+  let count = 0;
+  for (const u of users) { count += await deleteUserCascade(u.id); }
+  return count;
+}
+
+// --- Historial de cargues masivos ---
+export async function recordBulkOp(opType, source, summary, items) {
+  await ensureSQLite();
+  const createdCount = (items||[]).filter(it => String(it.action||'') === 'created').length;
+  const updatedCount = (items||[]).filter(it => String(it.action||'') === 'updated').length;
+  const failedCount = Number(summary?.failed||0);
+  run('INSERT INTO bulk_ops (op_type, source, created_count, updated_count, failed_count, created_at) VALUES (?,?,?,?,?,?)', [String(opType||''), String(source||'csv'), createdCount, updatedCount, failedCount, Date.now()]);
+  await saveSQLite();
+  const id = scalar('SELECT last_insert_rowid() as id');
+  for (const it of (items||[])) {
+    run('INSERT INTO bulk_ops_items (bulk_id, user_id, action, before_json, after_json) VALUES (?,?,?,?,?)', [id, Number(it.user_id||0), String(it.action||'created'), it.before_json ? JSON.stringify(it.before_json) : null, it.after_json ? JSON.stringify(it.after_json) : null]);
+  }
+  await saveSQLite();
+  window.dispatchEvent(new CustomEvent('dbchange', { detail: { type: 'bulk_ops', id } }));
+  return id;
+}
+
+export async function listBulkOps() {
+  await ensureSQLite();
+  const rows = all('SELECT id, op_type, source, created_count, updated_count, failed_count, created_at FROM bulk_ops ORDER BY created_at DESC');
+  return rows.map(r => ({ id: r.id, type: r.op_type, source: r.source || 'csv', created: r.created_count, updated: r.updated_count, failed: r.failed_count, createdAt: new Date(r.created_at).toISOString() }));
+}
+
+export async function listBulkOpItems(bulkId) {
+  await ensureSQLite();
+  const rows = all('SELECT id, bulk_id, user_id, action, before_json, after_json FROM bulk_ops_items WHERE bulk_id=? ORDER BY id ASC', [bulkId]);
+  return rows.map(r => ({ id: r.id, bulkId: r.bulk_id, userId: r.user_id, action: r.action, before: r.before_json ? JSON.parse(r.before_json) : null, after: r.after_json ? JSON.parse(r.after_json) : null }));
+}
+
+export async function undoBulkOp(bulkId) {
+  await ensureSQLite();
+  const items = await listBulkOpItems(bulkId);
+  let reverted = 0;
+  for (const it of items) {
+    if (it.action === 'created') {
+      reverted += await deleteUserCascade(it.userId);
+    } else if (it.action === 'updated' && it.before) {
+      const patch = {};
+      if (it.before.name !== undefined) patch.name = it.before.name;
+      if (it.before.career !== undefined) patch.career = it.before.career;
+      if (it.before.semester !== undefined) patch.semester = it.before.semester;
+      if (it.before.status !== undefined) patch.status = it.before.status;
+      if (it.before.visitReason !== undefined) patch.visitReason = it.before.visitReason;
+      if (it.before.userCode !== undefined) patch.userCode = it.before.userCode;
+      try { await updateUser(it.userId, patch); reverted++; } catch {}
+    }
+  }
+  return reverted;
+}
+
+export async function deleteCreatedUsersByBulkId(bulkId) {
+  await ensureSQLite();
+  const rows = all('SELECT DISTINCT user_id FROM bulk_ops_items WHERE bulk_id=? AND action=?', [bulkId, 'created']);
+  let cnt = 0;
+  for (const r of rows) { cnt += await deleteUserCascade(r.user_id); }
+  return cnt;
+}
+
+export async function deleteCreatedUsersAcrossAllBulks() {
+  await ensureSQLite();
+  const rows = all("SELECT DISTINCT user_id FROM bulk_ops_items WHERE action='created'");
+  let cnt = 0;
+  for (const r of rows) { cnt += await deleteUserCascade(r.user_id); }
+  return cnt;
+}
+
+export async function recalcBulkOpsSummaries() {
+  await ensureSQLite();
+  const ops = all('SELECT id, failed_count FROM bulk_ops ORDER BY id DESC');
+  for (const o of ops) {
+    const items = all('SELECT action FROM bulk_ops_items WHERE bulk_id=?', [o.id]);
+    const createdCount = items.filter(x => String(x.action||'') === 'created').length;
+    const updatedCount = items.filter(x => String(x.action||'') === 'updated').length;
+    let failedCount = Number(o.failed_count||0);
+    if ((createdCount + updatedCount) > 0 && failedCount >= items.length) failedCount = 0;
+    run('UPDATE bulk_ops SET created_count=?, updated_count=?, failed_count=? WHERE id=?', [createdCount, updatedCount, failedCount, o.id]);
+  }
+  await saveSQLite();
 }

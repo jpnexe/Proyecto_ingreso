@@ -33,11 +33,13 @@ export function renderNavbar(currentUser, activeRoute) {
       
       <!-- Navegación normal para desktop -->
       <nav class="nav">
-        <a href="#/login" class="${isActive('login')}">Login</a>
-        <a href="#/registro" class="${isActive('registro')}">Registro</a>
-        <a href="#/admin" class="${isActive('admin')}">Administradores</a>
-        <a href="#/estudiantes" class="${isActive('estudiantes')}">Estudiantes</a>
-        <a href="#/visitantes" class="${isActive('visitantes')}">Visitantes</a>
+        ${!currentUser ? `
+          <a href="#/login" class="${isActive('login')}">Login</a>
+          <a href="#/registro" class="${isActive('registro')}">Registro</a>
+          <a href="#/admin" class="${isActive('admin')}">Administradores</a>
+          <a href="#/estudiantes" class="${isActive('estudiantes')}">Estudiantes</a>
+          <a href="#/visitantes" class="${isActive('visitantes')}">Visitantes</a>
+        ` : ''}
         ${currentUser ? `<span class="badge">${currentUser.name} · <span class="role-${currentUser.role}">${currentUser.role}</span></span>` : ''}
         ${currentUser ? `<button id="logout" class="btn btn-orange" title="Cerrar sesión">Salir</button>` : ''}
         <div id="weather"></div>
@@ -53,11 +55,13 @@ export function renderNavbar(currentUser, activeRoute) {
       <!-- Menú móvil desplegable -->
       <div class="mobile-nav" id="mobile-nav">
         <nav class="nav">
-          <a href="#/login" class="${isActive('login')}">Login</a>
-          <a href="#/registro" class="${isActive('registro')}">Registro</a>
-          <a href="#/admin" class="${isActive('admin')}">Administradores</a>
-          <a href="#/estudiantes" class="${isActive('estudiantes')}">Estudiantes</a>
-          <a href="#/visitantes" class="${isActive('visitantes')}">Visitantes</a>
+          ${!currentUser ? `
+            <a href="#/login" class="${isActive('login')}">Login</a>
+            <a href="#/registro" class="${isActive('registro')}">Registro</a>
+            <a href="#/admin" class="${isActive('admin')}">Administradores</a>
+            <a href="#/estudiantes" class="${isActive('estudiantes')}">Estudiantes</a>
+            <a href="#/visitantes" class="${isActive('visitantes')}">Visitantes</a>
+          ` : ''}
           ${currentUser ? `<span class="badge">${currentUser.name} · <span class="role-${currentUser.role}">${currentUser.role}</span></span>` : ''}
           ${currentUser ? `<button id="logout-mobile" class="btn btn-orange" title="Cerrar sesión">Salir</button>` : ''}
           <div id="weather-mobile"></div>

@@ -779,7 +779,7 @@ body.modal-open { overflow: hidden; }
   overflow: auto;
   position: fixed;
   left: 50%;
-  top: calc(50% + 14vh);
+  top: 50%;
   transform: translate(-50%, -50%);
   line-height: 1.5;
 }

@@ -1,4 +1,4 @@
-import { logAction, getUserStats, listUsers, updateUser, deleteUser, listReservas, getUserById, getUserByEmail, getUserByCode, registerEntry, registerExit, registerUser, getLogs, listTasks, createTask, updateTask, deleteTask, migrateLocalTasksToSQLite, exportSQLite, importSQLite, getDailyEntryStats, getEntryExitStats, getHourlyEntryStats, listEntriesByUser, getLastEntryForUser, listSchedules, ensureSchedulesForCareerSemester, assignScheduleToUser } from '../js/db.js';
+import { logAction, getUserStats, listUsers, updateUser, deleteUser, listReservas, getUserById, getUserByEmail, getUserByCode, registerEntry, registerExit, registerUser, getLogs, listTasks, createTask, updateTask, deleteTask, migrateLocalTasksToSQLite, exportSQLite, importSQLite, getDailyEntryStats, getEntryExitStats, getHourlyEntryStats, listEntriesByUser, getLastEntryForUser, listSchedules, ensureSchedulesForCareerSemester, assignScheduleToUser, massDeleteUsersByFilter, deleteUserCascade } from '../js/db.js';
 import { altListTasks, altCreateTask, altUpdateTask, altDeleteTask, altReplaceAllTasks, altExportSQLite, altImportSQLite } from '../js/alt_db.js';
 
 export function render() {
@@ -459,12 +459,16 @@ export function mount({ currentUser, navigate, showToast } = {}) {
           <div class="users-actions-right">
             <input type="search" id="user-search" placeholder="Buscar por nombre o correo" />
             <button id="user-add-btn" class="btn btn-primary" title="Añadir un nuevo registro"><i class="fas fa-plus"></i> Añadir registro</button>
+            <button id="users-select-all-btn" class="btn btn-sm" title="Marcar todo">Marcar todo</button>
+            <button id="users-delete-selected" class="btn btn-red btn-sm" title="Eliminar seleccionados">Eliminar seleccionados</button>
+            <span id="users-selected-count" class="small muted" title="Seleccionados">0 seleccionados</span>
           </div>
         </div>
         <div class="users-table-wrap">
           <table class="users-table">
             <thead id="users-table-head">
               <tr>
+                <th style="width:36px"><input type="checkbox" id="users-select-all" title="Marcar todo" /></th>
                 <th>Nombre</th>
                 <th>Correo</th>
                 <th>Rol</th>
@@ -661,6 +665,46 @@ export function mount({ currentUser, navigate, showToast } = {}) {
             </div>
             <div id="bulk-format-hint" class="small muted" style="margin-top:8px;"></div>
             <div id="bulk-result" class="small" style="margin-top:8px;"></div>
+
+            <hr style="margin:12px 0; opacity:0.2;" />
+            <h4>Eliminar masivo</h4>
+            <div style="display:grid; grid-template-columns: repeat(3, minmax(140px, 1fr)); gap:8px; align-items:end;">
+              <div>
+                <label>Tipo</label>
+                <select id="bulk-delete-type" class="input"><option value="estudiante">Estudiantes</option><option value="visitante">Visitantes</option></select>
+              </div>
+              <div>
+                <label>Carrera</label>
+                <select id="bulk-delete-career" class="input">
+                  <option value="">(Todas)</option>
+                  <option value="Administración de Empresas">Administración de Empresas</option>
+                  <option value="Contaduría Pública">Contaduría Pública</option>
+                  <option value="Trabajo social">Trabajo social</option>
+                  <option value="Ingeniería en sistemas">Ingeniería en sistemas</option>
+                  <option value="Licenciatura infantil">Licenciatura infantil</option>
+                </select>
+              </div>
+              <div>
+                <label>Semestre</label>
+                <select id="bulk-delete-semester" class="input">
+                  <option value="">(Todos)</option>
+                  <option value="1">1</option>
+                  <option value="2">2</option>
+                  <option value="3">3</option>
+                  <option value="4">4</option>
+                  <option value="5">5</option>
+                  <option value="6">6</option>
+                  <option value="7">7</option>
+                  <option value="8">8</option>
+                  <option value="9">9</option>
+                  <option value="10">10</option>
+                </select>
+              </div>
+              <div style="grid-column: 1 / -1; display:flex; gap:8px; align-items:center;">
+                <button id="bulk-delete-btn" class="btn btn-red btn-sm">Eliminar usuarios</button>
+                <span id="bulk-delete-result" class="small muted"></span>
+              </div>
+            </div>
           </div>
           <div class="setting-card">
             <h4>Calendario</h4>
@@ -947,6 +991,7 @@ export function mount({ currentUser, navigate, showToast } = {}) {
   let qrStream = null;
   let scanTimer = null;
   let detector = null;
+  let scanLock = false;
 
   const findUserByCode = async (raw) => {
     const code = String(raw || '').trim().toLowerCase();
@@ -970,7 +1015,6 @@ export function mount({ currentUser, navigate, showToast } = {}) {
       return;
     }
     try { await registerEntry(user.id, source); } catch (e) { console.warn('Error registrando ingreso:', e); }
-    await logAction(user.id, 'entry_registered', `Ingreso por ${source}`);
     if (typeof showToast === 'function') showToast(`Ingreso registrado: ${user.name}`, 'success', 'Registro');
     closeEntryModal();
   };
@@ -982,7 +1026,6 @@ export function mount({ currentUser, navigate, showToast } = {}) {
       return;
     }
     try { await registerExit(user.id, { auto: false }); } catch (e) { console.warn('Error registrando salida:', e); }
-    await logAction(user.id, 'exit_registered', `Salida por ${source}`);
     if (typeof showToast === 'function') showToast(`Salida registrada: ${user.name}`, 'success', 'Registro');
     closeEntryModal();
   };
@@ -992,6 +1035,7 @@ export function mount({ currentUser, navigate, showToast } = {}) {
       if (scanTimer) { clearInterval(scanTimer); scanTimer = null; }
       if (qrStream) { qrStream.getTracks().forEach(t => t.stop()); qrStream = null; }
     } catch {}
+    scanLock = false;
     const overlay = document.querySelector('.entry-overlay');
     if (overlay) overlay.remove();
   };
@@ -1061,7 +1105,12 @@ export function mount({ currentUser, navigate, showToast } = {}) {
         try {
           const codes = await detector.detect(video);
           if (codes && codes.length) {
-            processEntry(codes[0].rawValue, 'qr');
+            if (scanLock) return;
+            scanLock = true;
+            const raw = codes[0].rawValue;
+            // Detener inmediatamente el escaneo para evitar múltiples lecturas
+            if (scanTimer) { clearInterval(scanTimer); scanTimer = null; }
+            processEntry(raw, 'qr');
           }
         } catch (err) {
           console.warn('Error detectando QR:', err);
@@ -1137,7 +1186,11 @@ export function mount({ currentUser, navigate, showToast } = {}) {
         try {
           const codes = await detector.detect(video);
           if (codes && codes.length) {
-            processExit(codes[0].rawValue, 'qr');
+            if (scanLock) return;
+            scanLock = true;
+            const raw = codes[0].rawValue;
+            if (scanTimer) { clearInterval(scanTimer); scanTimer = null; }
+            processExit(raw, 'qr');
           }
         } catch (err) {
           console.warn('Error detectando QR:', err);
@@ -1508,6 +1561,11 @@ export function mount({ currentUser, navigate, showToast } = {}) {
     const closeBtn = document.getElementById('user-edit-close');
     const saveBtn = document.getElementById('user-edit-save');
     const deleteBtn = document.getElementById('user-edit-delete');
+    const selectAllBtn = document.getElementById('users-select-all-btn');
+    const deleteSelectedBtn = document.getElementById('users-delete-selected');
+    const selectedCountEl = document.getElementById('users-selected-count');
+    let selectedIds = new Set();
+    const updateSelectedCount = () => { if (selectedCountEl) selectedCountEl.textContent = `${selectedIds.size} seleccionados`; };
     const errEl = document.getElementById('user-edit-error');
     const idEl = document.getElementById('edit-user-id');
     const nameEl = document.getElementById('edit-user-name');
@@ -1779,6 +1837,7 @@ export function mount({ currentUser, navigate, showToast } = {}) {
         if (roleFilter === 'estudiante') {
           thead.innerHTML = `
             <tr>
+              <th style="width:36px"><input type="checkbox" id="users-select-all" title="Marcar todo" /></th>
               <th>Nombre</th>
               <th>Correo</th>
               <th>Rol</th>
@@ -1791,6 +1850,7 @@ export function mount({ currentUser, navigate, showToast } = {}) {
         } else if (roleFilter === 'visitante') {
           thead.innerHTML = `
             <tr>
+              <th style="width:36px"><input type="checkbox" id="users-select-all" title="Marcar todo" /></th>
               <th>Nombre</th>
               <th>Correo</th>
               <th>Rol</th>
@@ -1804,6 +1864,7 @@ export function mount({ currentUser, navigate, showToast } = {}) {
           // Administradores
           thead.innerHTML = `
             <tr>
+              <th style="width:36px"><input type="checkbox" id="users-select-all" title="Marcar todo" /></th>
               <th>Nombre</th>
               <th>Correo</th>
               <th>Rol</th>
@@ -1851,6 +1912,7 @@ export function mount({ currentUser, navigate, showToast } = {}) {
         if (roleFilter === 'estudiante') {
           return `
             <tr data-id="${u.id}">
+              <td><input type="checkbox" class="user-select" data-id="${u.id}" ${selectedIds.has(u.id)?'checked':''} /></td>
               <td>${u.name||''}</td>
               <td>${u.email||''}</td>
               <td>${roleLabel(u.role)}</td>
@@ -1868,6 +1930,7 @@ export function mount({ currentUser, navigate, showToast } = {}) {
           const codeVal = (u.userCode||'').trim() || `UV-${u.id}`;
           return `
             <tr data-id="${u.id}">
+              <td><input type="checkbox" class="user-select" data-id="${u.id}" ${selectedIds.has(u.id)?'checked':''} /></td>
               <td>${u.name||''}</td>
               <td>${u.email||''}</td>
               <td>${roleLabel(u.role)}</td>
@@ -1884,6 +1947,7 @@ export function mount({ currentUser, navigate, showToast } = {}) {
           // Administradores
           return `
             <tr data-id="${u.id}">
+              <td><input type="checkbox" class="user-select" data-id="${u.id}" ${selectedIds.has(u.id)?'checked':''} /></td>
               <td>${u.name||''}</td>
               <td>${u.email||''}</td>
               <td>${roleLabel(u.role)}</td>
@@ -1922,10 +1986,60 @@ export function mount({ currentUser, navigate, showToast } = {}) {
         });
       });
 
+      // Selección por fila: checkboxes
+      tbody.querySelectorAll('.user-select').forEach(cb => {
+        cb.addEventListener('change', (e) => {
+          const id = Number(e.target.getAttribute('data-id'));
+          if (e.target.checked) selectedIds.add(id); else selectedIds.delete(id);
+          updateSelectedCount();
+          const headCb = document.getElementById('users-select-all');
+          if (headCb) {
+            const allCbs = Array.from(tbody.querySelectorAll('.user-select'));
+            headCb.checked = allCbs.length > 0 && allCbs.every(x => x.checked);
+          }
+        });
+      });
+      const headCb = document.getElementById('users-select-all');
+      if (headCb) {
+        headCb.addEventListener('change', () => {
+          const allCbs = Array.from(tbody.querySelectorAll('.user-select'));
+          selectedIds = new Set();
+          allCbs.forEach(cb => { cb.checked = headCb.checked; if (headCb.checked) selectedIds.add(Number(cb.getAttribute('data-id'))); });
+          updateSelectedCount();
+        });
+      }
+
+      if (selectAllBtn && !selectAllBtn.dataset.bound) {
+        selectAllBtn.dataset.bound = '1';
+        selectAllBtn.addEventListener('click', () => {
+          const headCb2 = document.getElementById('users-select-all');
+          if (headCb2) { headCb2.checked = true; }
+          const allCbs = Array.from(tbody.querySelectorAll('.user-select'));
+          selectedIds = new Set();
+          allCbs.forEach(cb => { cb.checked = true; selectedIds.add(Number(cb.getAttribute('data-id'))); });
+          updateSelectedCount();
+        });
+      }
+
+      if (deleteSelectedBtn && !deleteSelectedBtn.dataset.bound) {
+        deleteSelectedBtn.dataset.bound = '1';
+        deleteSelectedBtn.addEventListener('click', async () => {
+          if (selectedIds.size === 0) { if (typeof showToast === 'function') showToast('No hay usuarios seleccionados', 'warning'); return; }
+          if (!confirm(`¿Eliminar ${selectedIds.size} usuarios seleccionados?`)) return;
+          let deleted = 0; const ids = Array.from(selectedIds);
+          for (const id of ids) {
+            try { await deleteUserCascade(id); deleted++; } catch {}
+          }
+          selectedIds.clear(); updateSelectedCount();
+          if (typeof showToast === 'function') showToast(`Eliminados: ${deleted}`, 'success');
+          renderTable();
+        });
+      }
+
       if (roleFilter === 'estudiante') {
         tbody.querySelectorAll('tr').forEach(tr => {
           tr.addEventListener('click', async (e) => {
-            if (e.target.closest('button')) return;
+            if (e.target.closest('button') || e.target.closest('input')) return;
             const id = Number(tr.getAttribute('data-id'));
             const user = usersCache.find(x => x.id === id) || await getUserById(id);
             if (user) openStudentDetail(user);
@@ -2566,6 +2680,11 @@ export function mount({ currentUser, navigate, showToast } = {}) {
     const bulkFile = document.getElementById('bulk-csv-file');
     const bulkHint = document.getElementById('bulk-format-hint');
     const bulkResult = document.getElementById('bulk-result');
+    const bulkDeleteType = document.getElementById('bulk-delete-type');
+    const bulkDeleteCareer = document.getElementById('bulk-delete-career');
+    const bulkDeleteSemester = document.getElementById('bulk-delete-semester');
+    const bulkDeleteBtn = document.getElementById('bulk-delete-btn');
+    const bulkDeleteRes = document.getElementById('bulk-delete-result');
     const migrateBtn = document.getElementById('migrate-tasks-btn');
     const dualToggle = document.getElementById('dual-write-toggle');
     const compareBtn = document.getElementById('compare-db-btn');
@@ -2669,6 +2788,8 @@ export function mount({ currentUser, navigate, showToast } = {}) {
       const text = await file.text();
       const rows = parseCSV(text);
       let created = 0, updated = 0, failed = 0;
+      const items = [];
+      const errors = [];
       for (const r of rows) {
         try {
           const email = String(r.email||'').toLowerCase();
@@ -2679,12 +2800,14 @@ export function mount({ currentUser, navigate, showToast } = {}) {
             if (type === 'estudiante') {
               const newId = await registerUser({ name: r.name, email, password: pass, role: 'estudiante', career: r.career||'', semester: r.semester||'', status: r.status||'activo' });
               if (r.user_code) await updateUser(newId, { userCode: r.user_code });
+              items.push({ user_id: newId, action: 'created' });
             } else {
               const id = await registerUser({ name: r.name, email, password: pass, role: 'visitante', career: '', semester: '', status: r.status||'activo' });
               const patch = {};
               if (r.visitReason) patch.visitReason = r.visitReason;
               if (r.user_code) patch.userCode = r.user_code;
               if (Object.keys(patch).length) await updateUser(id, patch);
+              items.push({ user_id: id, action: 'created' });
             }
             created++;
           } else {
@@ -2694,14 +2817,17 @@ export function mount({ currentUser, navigate, showToast } = {}) {
             if (type === 'visitante' && r.visitReason) { patch.visitReason = r.visitReason; }
             if (r.status) patch.status = r.status;
             if (r.user_code) patch.userCode = r.user_code;
+            const before = { name: current.name, career: current.career, semester: current.semester, status: current.status, visitReason: current.visitReason, userCode: current.userCode };
             await updateUser(current.id, patch);
+            items.push({ user_id: current.id, action: 'updated', before_json: before });
             updated++;
           }
         } catch (e) {
           failed++;
+          errors.push(String(e?.message || e));
         }
       }
-      bulkResult.textContent = `Completado. Nuevos: ${created}, Actualizados: ${updated}, Fallidos: ${failed}.`;
+      bulkResult.textContent = `Completado. Nuevos: ${created}, Actualizados: ${updated}, Fallidos: ${failed}.` + (errors.length ? ` Ejemplo error: ${errors[0]}` : '');
       localStorage.setItem('adminLastSection', 'ajustes');
     }
     if (bulkFile) {
@@ -2709,6 +2835,26 @@ export function mount({ currentUser, navigate, showToast } = {}) {
         const f = e.target.files?.[0]; if (!f) return;
         const t = bulkTypeEl?.value || 'estudiante';
         try { await handleBulk(t, f); if (typeof showToast === 'function') showToast('Importación CSV completada', 'success'); } catch (err) { if (typeof showToast === 'function') showToast('Error al importar CSV', 'error'); }
+      });
+    }
+
+
+    if (bulkDeleteBtn) {
+      bulkDeleteBtn.addEventListener('click', async () => {
+        try {
+          const type = bulkDeleteType?.value || 'estudiante';
+          const filters = {};
+          if (type === 'estudiante') {
+            if (bulkDeleteCareer?.value) filters.career = bulkDeleteCareer.value;
+            if (bulkDeleteSemester?.value) filters.semester = bulkDeleteSemester.value;
+          }
+          const n = await massDeleteUsersByFilter(type, filters);
+          bulkDeleteRes.textContent = `Eliminados: ${n}`;
+          if (typeof showToast === 'function') showToast(`Eliminados ${n} usuarios`, 'success');
+        } catch (err) {
+          bulkDeleteRes.textContent = 'Error al eliminar';
+          if (typeof showToast === 'function') showToast('Error al eliminar masivo', 'error');
+        }
       });
     }
     if (migrateBtn) {
