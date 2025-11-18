@@ -390,39 +390,46 @@ Para soporte técnico o consultas sobre el sistema:
 ### Versión Actual
 **Última actualización**: Noviembre 2025
 
-#### ✨ Nuevas Características
-- **Sistema de Gráficos Avanzado**: Integración de Chart.js para visualizaciones interactivas
-  - Gráficos de registros diarios por rol
-  - Distribución de estudiantes por carrera
-  - Mini gráficos de resumen
-- **Base de Datos Alternativa**: Módulo `alt_db.js` para compatibilidad
-  - Sistema de tareas con prioridades
-  - Soporte para Dexie.js como alternativa
-- **Scripts de Automatización Mejorados**:
-  - `git_update.py`: Actualización automática con guardado de cambios locales
-  - `git_upload.py`: Subida simplificada a repositorio
-  - `iniciar_ngrok.py`: Tunelización remota
-- **Panel Administrativo Ampliado**:
-  - Barra lateral navegable con múltiples secciones
-  - Notificaciones en tiempo real
-  - Botón de modo oscuro/claro
-  - Vista mejorada de usuarios y estadísticas
-- **Persistencia Mejorada**:
-  - Exportación/Importación completa de base de datos
-  - Sincronización IndexedDB mejorada
-  - Soporte para múltiples fuentes de datos
+#### ✨ Cambios funcionales
+- Importación masiva (CSV) ahora admite `user_code` opcional y genera códigos visibles: `UG-<id>` para estudiantes, `UV-<id>` para visitantes.
+- Se agregaron archivos de prueba para importación:
+  - `pruebas/estudiantes_bulk_150.csv` con contraseña `123456` para todos
+  - `pruebas/visitantes_bulk_100.csv` con contraseña `123456`
+- Gestión de usuarios con selección múltiple:
+  - Checkbox por fila y “Marcar todo” en encabezado y barra de acciones
+  - Botón “Eliminar seleccionados” que borra en cascada los usuarios elegidos (reservas, ingresos, sesiones y logs)
+- Registro por QR sin duplicados:
+  - Bloqueo de escaneo y detención inmediata del detector tras la primera lectura para evitar múltiples registros por frame
+  - Los logs de registro de entrada/salida quedan centralizados en las funciones de BD
+- Semillas de datos demo para estadísticas:
+  - Se insertan ~60 usuarios (36 estudiantes + 24 visitantes) con nombres aleatorios y contraseña `123456`
+  - Se generan ingresos/salidas de los últimos 14 días para activar las gráficas
+- Navbar corregido: ocultar enlaces públicos cuando hay sesión activa para evitar texto duplicado al redirigir al login
 
-#### 🐛 Correcciones
-- Mejora en la gestión de roles y permisos
-- Optimización de consultas a base de datos
-- Mejora en la responsividad del panel administrativo
+#### 🧩 UI/UX
+- Modal de detalles de estudiantes recentrado en pantalla.
+- Sidebar de administración en modo claro optimizado en pantallas estrechas: mayor contraste y legibilidad.
+- Menús desplegables (select) estilizados con glass morphism, flecha SVG y estados hover/focus acordes al tema.
 
-#### 📦 Dependencias Actualizadas
-- `sql.js`: ^1.8.0 (SQLite en navegador)
-- `vite`: ^5.3.1 (Servidor de desarrollo)
+#### 🗑️ Decisiones y remociones
+- Se retiró el historial persistente de cargues masivos en Ajustes. Ahora se muestra únicamente el resultado de la importación en la propia sección. Las funciones internas de auditoría pueden mantenerse para uso futuro.
 
-#### 🔧 Cambios Técnicos
-- Refactorización de componentes para mejor modularidad
-- Mejora en la arquitectura de enrutamiento
-- Optimización de carga de CSS y JS
-- Mejora en la validación de formularios
+#### 🔧 Referencias técnicas
+- Registro de ingreso: `c:\Users\jaide\Desktop\Uni_proyec_dev\js\db.js:879-885`
+- Registro de salida: `c:\Users\jaide\Desktop\Uni_proyec_dev\js\db.js:971-975`
+- Escaneo QR y bloqueo de duplicados:
+  - Ingreso: `c:\Users\jaide\Desktop\Uni_proyec_dev\components\AdminDashboard.js:1104-1113`
+  - Salida: `c:\Users\jaide\Desktop\Uni_proyec_dev\components\AdminDashboard.js:1180-1189`
+- Selección múltiple y eliminación en usuarios: `c:\Users\jaide\Desktop\Uni_proyec_dev\components\AdminDashboard.js:1829-2006`
+- Borrado en cascada: `c:\Users\jaide\Desktop\Uni_proyec_dev\js\db.js:1121-1133`
+- Semillas de datos demo: `c:\Users\jaide\Desktop\Uni_proyec_dev\js\db.js:383-438`
+- Navbar ocultando enlaces públicos: `c:\Users\jaide\Desktop\Uni_proyec_dev\components\Navbar.js:36-43,58-64`
+- Sidebar claro mejorado: `c:\Users\jaide\Desktop\Uni_proyec_dev\css\admin-dashboard.css:1000-1023`
+- Selects estilizados: `c:\Users\jaide\Desktop\Uni_proyec_dev\css\admin-dashboard.css:610-667,668-691`
+
+#### ✅ Cómo probar rápidamente
+- Ejecuta el servidor: `npm run dev` y abre `http://localhost:5173/`.
+- En Ajustes → Importación CSV, usa las plantillas de `pruebas/` para cargar datos.
+- En Gestión de usuarios, marca varias filas y prueba “Eliminar seleccionados”.
+- En Inicio, registra ingreso/salida con QR; debe crear un único registro por lectura.
+- Revisa las gráficas; deberían mostrar actividad por las semillas de datos demo.

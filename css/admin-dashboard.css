@@ -830,6 +830,64 @@ body.modal-open { overflow: hidden; }
   color: var(--text-primary, #ffffff);
 }
 
+/* Estilizar selects globales del panel admin para concordar con el diseño */
+.admin-dashboard-modern select {
+  -webkit-appearance: none;
+  appearance: none;
+  padding: 8px 34px 8px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  background: var(--glass-bg);
+  color: var(--text-primary, #ffffff);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+  min-height: 32px;
+}
+.admin-dashboard-modern select:focus {
+  outline: none;
+  border-color: rgba(52,152,219,0.55);
+  box-shadow: 0 0 0 2px rgba(52,152,219,0.18);
+}
+.admin-dashboard-modern select:hover {
+  background: rgba(255,255,255,0.12);
+}
+.admin-dashboard-modern select:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* Icono de despliegue con SVG embebido */
+.admin-dashboard-modern select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23bfbfbf' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 18px;
+}
+
+/* Modo claro: mayor contraste y flecha oscura */
+[data-theme="light"] .admin-dashboard-modern select {
+  background: rgba(255,255,255,0.96);
+  color: #1f2937;
+  border-color: rgba(31,41,55,0.18);
+  box-shadow: 0 2px 8px rgba(31,41,55,0.12);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231f2937' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+}
+[data-theme="light"] .admin-dashboard-modern select:hover {
+  background: rgba(31,41,55,0.04);
+}
+
+/* Responsivo: ocupar ancho disponible en paneles estrechos */
+@media (max-width: 992px) {
+  .admin-dashboard-modern .users-actions-right select,
+  .admin-dashboard-modern .search-actions select,
+  .admin-dashboard-modern .messages-actions-right select,
+  .admin-dashboard-modern .logs-actions select {
+    width: 100%;
+    max-width: 320px;
+  }
+}
+
 .student-only { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px 16px; }
 .form-error { color: #ff5252; font-size: 12px; margin-top: 6px; }
 
@@ -961,6 +1019,30 @@ body.modal-open { overflow: hidden; }
     justify-content: center;
   }
   .chart-card { padding: 12px; }
+}
+
+/* Mejora de contraste en modo claro para pantallas menos anchas */
+@media (max-width: 992px) {
+  [data-theme="light"] .sidebar {
+    background: rgba(255, 255, 255, 0.92);
+    border-color: rgba(31, 41, 55, 0.18);
+    box-shadow: 0 8px 24px rgba(31, 41, 55, 0.20);
+  }
+  [data-theme="light"] .sidebar .nav-item {
+    color: #1f2937;
+    background: rgba(31, 41, 55, 0.06);
+    border: 1px solid rgba(31, 41, 55, 0.12);
+  }
+  [data-theme="light"] .sidebar .nav-item:hover,
+  [data-theme="light"] .sidebar .nav-item.active {
+    background: rgba(31, 41, 55, 0.12);
+    border-color: rgba(31, 41, 55, 0.18);
+  }
+  [data-theme="light"] .sidebar:not(.expanded) .nav-item::after {
+    background: rgba(255, 255, 255, 0.96);
+    color: #1f2937;
+    border-color: rgba(31, 41, 55, 0.18);
+  }
 }
 
 @media (max-width: 480px) {
