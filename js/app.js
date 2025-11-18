@@ -19,8 +19,8 @@ function getCurrentUser() {
 }
 
 function navigate(route) {
-  if (!route.startsWith('#/')) route = `#/${route}`;
-  location.hash = route;
+  const clean = String(route).replace(/^#?\/+/, '');
+  location.hash = `#/${clean}`;
 }
 
 function showModal(message, type = 'info', title = null) {
@@ -107,7 +107,7 @@ function canAccess(route, user) {
 }
 
 function getRouteFromHash() {
-  const raw = location.hash.replace('#/', '').trim();
+  const raw = location.hash.replace('#/', '').replace(/^\/+/, '').trim();
   return raw || '';
 }
 
@@ -116,8 +116,8 @@ async function renderRoute() {
   const user = getCurrentUser();
   const Component = routes[route] || Login;
 
-  // Navbar visible excepto en páginas de autenticación y panel admin (usa barra lateral propia)
-  const showNav = !(['login', 'register', 'registro', '', 'admin'].includes(route));
+  // Navbar visible excepto en autenticación y cualquier subruta de admin (usa barra lateral propia)
+  const showNav = !(['login', 'register', 'registro', ''].includes(route) || route.startsWith('admin'));
   navbar.innerHTML = showNav ? renderNavbar(user, route) : '';
   if (showNav) mountNavbar(user, navigate, showModal, route);
 
