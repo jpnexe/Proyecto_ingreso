@@ -45,6 +45,7 @@ export function render({ currentUser }) {
               </div>
               <div class="muted_small">Escanéalo en administración para registrar tu ingreso.</div>
               <button class="btn btn-orange" onclick="downloadCredential()" style="margin-top:10px;">📲 Descargar credencial</button>
+              <button class="btn btn-outline btn-sm qr-fullscreen-btn" onclick="showStudentQRFullscreen()" style="margin-top:6px;">📱 Ampliar QR</button>
             </div>
 
             <div class="glass status-card">
@@ -94,6 +95,14 @@ export function render({ currentUser }) {
         <div id="announcements"></div>
       </section>
     </div>
+    <div id="student-qr-modal" class="qr-modal">
+      <div class="qr-modal-content">
+        <button class="qr-modal-close" onclick="closeStudentQRModal()">&times;</button>
+        <h3>Código QR de Estudiante</h3>
+        <img id="student-qr-fullscreen" alt="QR Estudiante" />
+        <p style="margin-top: 1rem; color: #666; font-size: 0.9rem;">Escanéalo en administración para registrar tu ingreso</p>
+      </div>
+    </div>
   `;
 }
 
@@ -112,6 +121,28 @@ export async function mount({ currentUser, navigate, toast }) {
   }
   loadEntryHistory(currentUser);
   loadAssignedSchedule(currentUser);
+
+  function closeStudentQRModalOnEsc(event) {
+    if (event.key === 'Escape') {
+      closeStudentQRModal();
+    }
+  }
+  window.showStudentQRFullscreen = function() {
+    const modal = document.getElementById('student-qr-modal');
+    const img = document.getElementById('student-qr-fullscreen');
+    const codeVal = (currentUser?.userCode) || (currentUser ? `UG-${currentUser.id}` : '');
+    if (img) img.src = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(codeVal)}`;
+    if (modal) {
+      modal.classList.add('active');
+      document.addEventListener('keydown', closeStudentQRModalOnEsc);
+      modal.addEventListener('click', function(e) { if (e.target === modal) closeStudentQRModal(); });
+    }
+  };
+  window.closeStudentQRModal = function() {
+    const modal = document.getElementById('student-qr-modal');
+    if (modal) modal.classList.remove('active');
+    document.removeEventListener('keydown', closeStudentQRModalOnEsc);
+  };
 }
 
 

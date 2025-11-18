@@ -1921,8 +1921,10 @@ export function mount({ currentUser, navigate, showToast } = {}) {
               <td><span class="chip chip--career">${(u.career||'Sin carrera')}</span></td>
               <td><span class="chip chip--semester">${(u.semester||'')}</span></td>
               <td>
-                <button class="btn btn-sm user-edit">Editar</button>
-                <button class="btn btn-danger btn-sm user-delete">Eliminar</button>
+                <div class="row-actions">
+                  <button class="btn btn-sm user-edit">Editar</button>
+                  <button class="btn btn-danger btn-sm user-delete">Eliminar</button>
+                </div>
               </td>
             </tr>`;
         } else if (roleFilter === 'visitante') {
@@ -1939,8 +1941,10 @@ export function mount({ currentUser, navigate, showToast } = {}) {
               <td><span class="chip ${statusCls}">${u.status||''}</span></td>
               <td><span class="chip chip--reason">${motivo}</span></td>
               <td>
-                <button class="btn btn-sm user-edit">Editar</button>
-                <button class="btn btn-danger btn-sm user-delete">Eliminar</button>
+                <div class="row-actions">
+                  <button class="btn btn-sm user-edit">Editar</button>
+                  <button class="btn btn-danger btn-sm user-delete">Eliminar</button>
+                </div>
               </td>
             </tr>`;
         } else {
@@ -1953,8 +1957,10 @@ export function mount({ currentUser, navigate, showToast } = {}) {
               <td>${roleLabel(u.role)}</td>
               <td><span class="chip ${statusCls}">${u.status||''}</span></td>
               <td>
-                <button class="btn btn-sm user-edit">Editar</button>
-                <button class="btn btn-danger btn-sm user-delete">Eliminar</button>
+                <div class="row-actions">
+                  <button class="btn btn-sm user-edit">Editar</button>
+                  <button class="btn btn-danger btn-sm user-delete">Eliminar</button>
+                </div>
               </td>
             </tr>`;
         }
